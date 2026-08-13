@@ -3,7 +3,7 @@ resource "aws_cloudwatch_dashboard" "this" {
   dashboard_body = jsonencode({ widgets = [{
     type = "metric", x = 0, y = 0, width = 24, height = 12,
     properties = {
-      title = "CampusOps Phase 2", view = "timeSeries", region = data.aws_region.current.name,
+      title = "CampusOps Phase 2", view = "timeSeries", region = data.aws_region.current.region,
       metrics = [
         ["AWS/Lambda", "Invocations", "FunctionName", var.lambda_name],
         [".", "Errors", ".", "."], [".", "Duration", ".", "."],

@@ -6,7 +6,7 @@ terraform {
     encrypt      = true
   }
   required_providers {
-    aws = { source = "hashicorp/aws", version = "~> 5.80" }
+    aws = { source = "hashicorp/aws", version = "~> 6.12.0" }
   }
 }
 provider "aws" {
