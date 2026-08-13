@@ -1,0 +1,31 @@
+{
+  "name": "campusops-mcp-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "dev:server": "pnpm --filter @campusops/mcp-server dev",
+    "lint": "eslint . && prettier --check .",
+    "lint:fix": "eslint . --fix && prettier --write .",
+    "typecheck": "tsc -b --pretty false && tsc -p apps/mcp-server/test/tsconfig.json --pretty false && tsc -p apps/mcp-client/test/tsconfig.json --pretty false && tsc -p packages/auth/test/tsconfig.json --pretty false",
+    "test": "vitest run",
+    "test:contract": "vitest run apps/mcp-client/test/contract.test.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@types/node": "^20.19.11",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.1",
+    "vitest": "^3.2.4"
+  }
+}

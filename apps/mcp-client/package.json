@@ -1,0 +1,19 @@
+{
+  "name": "@campusops/mcp-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.0.0"
+  },
+  "devDependencies": {
+    "@campusops/audit": "workspace:*",
+    "@campusops/auth": "workspace:*",
+    "@campusops/mcp-server": "workspace:*"
+  }
+}
