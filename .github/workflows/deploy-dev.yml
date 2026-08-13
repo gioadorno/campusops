@@ -35,23 +35,31 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
       - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" -backend-config="region=${{ vars.AWS_REGION }}"
         working-directory: infrastructure/environments/dev
-      - run: terraform plan -out=tfplan -var="state_bucket_name=${{ vars.TF_STATE_BUCKET }}" -var="aws_region=${{ vars.AWS_REGION }}"
+      - run: terraform plan -out=tfplan -var="aws_region=${{ vars.AWS_REGION }}"
         working-directory: infrastructure/environments/dev
       - run: terraform apply -auto-approve tfplan
         working-directory: infrastructure/environments/dev
+      - name: Read deployed configuration
+        id: terraform_outputs
+        working-directory: infrastructure/environments/dev
+        run: |
+          echo "operational_table_name=$(terraform output -raw operational_table_name)" >> "$GITHUB_OUTPUT"
+          echo "audit_table_name=$(terraform output -raw audit_table_name)" >> "$GITHUB_OUTPUT"
+          echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> "$GITHUB_OUTPUT"
+          echo "cognito_client_id=$(terraform output -raw cognito_client_id)" >> "$GITHUB_OUTPUT"
+          echo "mcp_endpoint=$(terraform output -raw mcp_endpoint)" >> "$GITHUB_OUTPUT"
       - run: pnpm seed:aws
         env:
           CAMPUSOPS_RUNTIME: aws
           AWS_REGION: ${{ vars.AWS_REGION }}
-          CAMPUSOPS_TABLE_NAME: campusops-dev-operational
-          CAMPUSOPS_AUDIT_TABLE_NAME: campusops-dev-audit
-          COGNITO_USER_POOL_ID: deployment-seed-not-used
-          COGNITO_CLIENT_ID: deployment-seed-not-used
+          CAMPUSOPS_TABLE_NAME: ${{ steps.terraform_outputs.outputs.operational_table_name }}
+          CAMPUSOPS_AUDIT_TABLE_NAME: ${{ steps.terraform_outputs.outputs.audit_table_name }}
+          COGNITO_USER_POOL_ID: ${{ steps.terraform_outputs.outputs.cognito_user_pool_id }}
+          COGNITO_CLIENT_ID: ${{ steps.terraform_outputs.outputs.cognito_client_id }}
           ALLOWED_ORIGINS: http://localhost:3000
           ENVIRONMENT: dev
       - name: Verify protected endpoint
         run: |
-          endpoint=$(terraform output -raw mcp_endpoint)
+          endpoint="${{ steps.terraform_outputs.outputs.mcp_endpoint }}"
           status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$endpoint")
           test "$status" = "401"
-        working-directory: infrastructure/environments/dev

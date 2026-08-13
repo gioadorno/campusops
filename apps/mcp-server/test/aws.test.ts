@@ -87,6 +87,23 @@ describe('DynamoDB adapters', () => {
     });
   });
 
+  it('paginates filtered user requests until it collects the requested matches', async () => {
+    const laterMatch = { ...request, id: 'req-2', status: 'closed' as const };
+    const mock = client(
+      { Items: [], LastEvaluatedKey: { GSI1PK: 'USER#user-1', GSI1SK: 'page-1' } },
+      { Items: [supportRequestToItem(laterMatch)] }
+    );
+    const repository = new DynamoDbSupportRequestRepository(mock.value, 'table');
+
+    await expect(repository.listForUser('user-1', 'closed', 1)).resolves.toEqual([laterMatch]);
+    expect(mock.send).toHaveBeenCalledTimes(2);
+    const second = mock.send.mock.calls[1]?.[0] as QueryCommand;
+    expect(second.input.ExclusiveStartKey).toEqual({
+      GSI1PK: 'USER#user-1',
+      GSI1SK: 'page-1'
+    });
+  });
+
   it('returns the durable original for an identical idempotent payload', async () => {
     const fingerprint = (await import('../src/repositories.js')).supportRequestFingerprint(input);
     const mock = client(

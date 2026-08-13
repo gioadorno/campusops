@@ -27,11 +27,6 @@ module "iam" {
   operational_index_arn = module.operational.index_arn
   audit_table_arn       = module.audit.arn
   log_group_arn         = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${local.name}-mcp"
-  github_repository     = var.github_repository
-  state_bucket_arn      = "arn:aws:s3:::${var.state_bucket_name}"
-  state_key             = "campusops/dev/terraform.tfstate"
-  region                = var.aws_region
-  account_id            = data.aws_caller_identity.current.account_id
   tags                  = local.tags
 }
 module "lambda" {
@@ -52,14 +47,15 @@ module "lambda" {
   tags = local.tags
 }
 module "api" {
-  source            = "../../modules/api-gateway"
-  name              = "${local.name}-mcp"
-  lambda_arn        = module.lambda.arn
-  lambda_invoke_arn = module.lambda.invoke_arn
-  cognito_issuer    = module.cognito.issuer
-  cognito_client_id = module.cognito.client_id
-  allowed_origins   = var.allowed_origins
-  tags              = local.tags
+  source               = "../../modules/api-gateway"
+  name                 = "${local.name}-mcp"
+  lambda_arn           = module.lambda.arn
+  lambda_invoke_arn    = module.lambda.invoke_arn
+  cognito_issuer       = module.cognito.issuer
+  cognito_client_id    = module.cognito.client_id
+  authorization_scopes = module.cognito.scope_identifiers
+  allowed_origins      = var.allowed_origins
+  tags                 = local.tags
 }
 module "observability" {
   source                 = "../../modules/observability"

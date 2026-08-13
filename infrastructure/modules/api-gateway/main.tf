@@ -26,12 +26,13 @@ resource "aws_apigatewayv2_integration" "lambda" {
   timeout_milliseconds   = 29000
 }
 resource "aws_apigatewayv2_route" "mcp" {
-  for_each           = toset(["GET", "POST"])
-  api_id             = aws_apigatewayv2_api.this.id
-  route_key          = "${each.value} /mcp"
-  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
-  authorization_type = "JWT"
-  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+  for_each             = toset(["GET", "POST"])
+  api_id               = aws_apigatewayv2_api.this.id
+  route_key            = "${each.value} /mcp"
+  target               = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type   = "JWT"
+  authorizer_id        = aws_apigatewayv2_authorizer.jwt.id
+  authorization_scopes = var.authorization_scopes
 }
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.this.id
