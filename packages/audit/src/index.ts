@@ -9,6 +9,7 @@ export interface AuditEvent {
   action: string;
   tool: string;
   authorizationDecision: 'allow' | 'deny';
+  denialReason?: 'scope' | 'ownership';
   requiredScopes: readonly Scope[];
   durationMs: number;
   result: 'success' | 'error' | 'denied';

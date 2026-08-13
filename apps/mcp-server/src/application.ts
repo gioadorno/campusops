@@ -8,7 +8,14 @@ import type {
   SearchPoliciesInput
 } from '@campusops/contracts';
 import { ConflictError, NotFoundError, OwnershipError } from './errors.js';
-import { PolicyRepository, ServiceRepository, SupportRequestRepository } from './repositories.js';
+import {
+  InMemoryPolicyRepository,
+  InMemoryServiceRepository,
+  InMemorySupportRequestRepository,
+  type PolicyRepository,
+  type ServiceRepository,
+  type SupportRequestRepository
+} from './repositories.js';
 
 export interface OperationContext {
   principal: Principal;
@@ -23,9 +30,9 @@ export interface Dependencies {
 }
 
 export const createDependencies = (audit: AuditSink): Dependencies => ({
-  policies: new PolicyRepository(),
-  services: new ServiceRepository(),
-  support: new SupportRequestRepository(),
+  policies: new InMemoryPolicyRepository(),
+  services: new InMemoryServiceRepository(),
+  support: new InMemorySupportRequestRepository(),
   audit
 });
 
@@ -42,6 +49,7 @@ export class CampusOpsService {
     const started = performance.now();
     let decision: 'allow' | 'deny' = 'allow';
     let result: 'success' | 'error' | 'denied' = 'success';
+    let denialReason: 'scope' | 'ownership' | undefined;
     try {
       authorize(context.principal, requiredScopes);
       return await fn();
@@ -49,6 +57,11 @@ export class CampusOpsService {
       if (error instanceof AuthorizationError) {
         decision = 'deny';
         result = 'denied';
+        denialReason = 'scope';
+      } else if (error instanceof OwnershipError) {
+        decision = 'deny';
+        result = 'denied';
+        denialReason = 'ownership';
       } else {
         result = 'error';
       }
@@ -62,6 +75,7 @@ export class CampusOpsService {
           action,
           tool: operation,
           authorizationDecision: decision,
+          ...(denialReason ? { denialReason } : {}),
           requiredScopes,
           durationMs: Math.max(0, performance.now() - started),
           result
@@ -121,13 +135,38 @@ export class CampusOpsService {
     });
   }
 
-  readResource<T>(
-    context: OperationContext,
-    uri: string,
-    requiredScopes: readonly Scope[],
-    value: T
-  ) {
-    return this.run(context, 'read_resource', uri, requiredScopes, () => value);
+  getPolicyCatalog(context: OperationContext) {
+    return this.run(context, 'read_resource', 'policy://catalog', ['policies:read'], () =>
+      this.dependencies.policies.catalog()
+    );
+  }
+
+  getPoliciesByCategory(context: OperationContext, category: string) {
+    return this.run(
+      context,
+      'read_resource',
+      `policy://categories/${category}`,
+      ['policies:read'],
+      () => this.dependencies.policies.findByCategory(category)
+    );
+  }
+
+  getServiceCatalog(context: OperationContext) {
+    return this.run(context, 'read_resource', 'services://catalog', ['services:read'], () =>
+      this.dependencies.services.all()
+    );
+  }
+
+  getSupportCategories(context: OperationContext) {
+    return this.run(context, 'read_resource', 'support://categories', ['requests:read'], () =>
+      this.dependencies.support.categories()
+    );
+  }
+
+  getPlatformCapabilities(context: OperationContext) {
+    return this.run(context, 'read_resource', 'platform://capabilities', [], () =>
+      this.dependencies.services.platformCapabilities()
+    );
   }
 
   getPrompt<T>(

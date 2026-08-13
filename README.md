@@ -23,7 +23,7 @@ CampusOps application service
 
 The monorepo uses pnpm workspaces:
 
-- `apps/mcp-server`: HTTP/stdio entrypoints, MCP adapter, application services, repositories, fictional data, and tests.
+- `apps/mcp-server`: HTTP/stdio entrypoints, MCP adapter, application services, repository interfaces/in-memory adapters, fictional data, and tests.
 - `apps/mcp-client`: v2 SDK client and end-to-end MCP contract tests.
 - `packages/contracts`: shared Zod input schemas and domain contracts.
 - `packages/auth`: signed local JWT issuer/verifier, principals, and scope checks.
@@ -31,7 +31,7 @@ The monorepo uses pnpm workspaces:
 - `packages/config`: validated local runtime configuration.
 - `docs`: architecture, MCP design, threat model, and decision records.
 
-Business logic never lives in transport setup or directly in the registration callbacks. Repositories are in-memory Phase 1 adapters and can later be replaced without changing MCP contracts.
+Business logic never lives in transport setup or directly in the registration callbacks. `Dependencies` references only the `PolicyRepository`, `ServiceRepository`, and `SupportRequestRepository` interfaces; `createDependencies()` selects their `InMemory*Repository` Phase 1 adapters. Tools and all five resources therefore follow the same transport → adapter → application service → repository interface → adapter path. Persistent adapters can replace them without changing MCP contracts or application behavior.
 
 ## MCP surface
 
@@ -57,13 +57,15 @@ Prompts are guidance, not privileged execution. They cannot bypass tool handlers
 
 HTTP requests require a signed bearer JWT. The local implementation is JWT-compatible and deliberately small: it validates signature, issuer, expiry, subject (`userId`), session ID, and an allow-listed scope array. It is an abstraction behind `TokenVerifier`, so a future OAuth/OIDC verifier can replace it.
 
-Available scopes are `policies:read`, `services:read`, `requests:read`, `requests:write`, and `admin:audit`. The HTTP boundary authenticates once. Every application operation then authorizes independently; user identity is never a support-tool argument. Ownership is checked after locating a support request and before returning or changing it.
+Available scopes are `policies:read`, `services:read`, `requests:read`, `requests:write`, and `admin:audit`. The HTTP boundary authenticates once. Every application operation then authorizes independently; user identity is never a support-tool argument. Ownership is checked after locating a support request and before returning or changing it. Ownership denials are audited as denied authorization with `denialReason: "ownership"`; scope denials use `denialReason: "scope"`.
 
-`JWT_SECRET` must be at least 32 characters. The checked-in default is only for local development and must never be reused outside a developer machine.
+`JWT_SECRET` must be at least 32 characters. Development and test may use the checked-in local fallback. Production fails closed unless `JWT_SECRET` is explicitly supplied, and it rejects the development fallback even when explicitly configured.
 
 ## Audit system
 
-Executable tools, resource reads, and prompt retrievals pass through a common audit wrapper. It records `eventId`, `traceId`, `userId`, `sessionId`, action, operation/tool name, authorization decision, required scopes, duration, result, and timestamp on success, denial, or error. It intentionally omits tool arguments, descriptions, policy bodies, token values, and result payloads. The Phase 1 sink is in-memory and implements a replaceable `AuditSink` interface.
+Executable tools, resource reads, and prompt retrievals pass through a common audit wrapper. It records `eventId`, `traceId`, `userId`, `sessionId`, action, operation/tool name, authorization decision, optional scope/ownership denial reason, required scopes, duration, result, and timestamp on success, denial, or error. It intentionally omits tool arguments, descriptions, policy bodies, token values, and result payloads. The Phase 1 sink is in-memory and implements a replaceable `AuditSink` interface.
+
+MCP-facing errors are normalized. Missing and cross-user support records both return `Resource not found or unavailable`, preventing ownership probing. Expected authorization and conflict failures use bounded public messages; unexpected internal exception names and messages are never returned to callers.
 
 ## Run locally
 
@@ -93,7 +95,9 @@ pnpm build
 pnpm test:contract
 ```
 
-The contract suite starts an ephemeral local HTTP server and uses the official MCP v2 client to list tools/resources/prompts, read a resource, get a prompt, invoke every read-only tool, test create/cancel behavior, prove duplicate idempotency calls create once, and verify scope and ownership failures.
+The contract suite starts an ephemeral local HTTP server and uses the official MCP v2 client to list tools/resources/prompts, read every resource, get a prompt, invoke every read-only tool, test create/cancel behavior, prove same-payload retries create once, reject conflicting payload reuse, and verify scope and ownership failures. Idempotency records are scoped by user and store a SHA-256 fingerprint over canonical `category`, `title`, `description`, and `severity` fields.
+
+GitHub Actions runs the frozen-lockfile install, lint, typecheck, unit/integration tests, build, and dedicated contract suite for every pull request and push to `master` using Node 20 and pnpm 10.33.0.
 
 ## Protocol compatibility
 
@@ -105,4 +109,4 @@ Phase 1 intentionally implements none of this. A future phase can place a harden
 
 ## Security considerations
 
-Inputs are strict and bounded, scopes are least-privilege, side effects require explicit write permission, idempotency is scoped to the authenticated user, ownership is enforced server-side, and audit payloads exclude sensitive content. MCP metadata is treated as untrusted presentation data rather than authority. See [the threat model](docs/threat-model.md) for attack-specific controls and residual risks.
+Inputs are strict and bounded, scopes are least-privilege, side effects require explicit write permission, idempotency is user-scoped and payload-bound, ownership is enforced server-side with non-enumerating public errors, production JWT configuration fails closed, and audit payloads exclude sensitive content. MCP metadata is treated as untrusted presentation data rather than authority. See [the threat model](docs/threat-model.md) for attack-specific controls and residual risks.
