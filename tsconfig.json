@@ -5,6 +5,7 @@
     { "path": "packages/auth" },
     { "path": "packages/audit" },
     { "path": "packages/config" },
+    { "path": "packages/aws" },
     { "path": "apps/mcp-server" },
     { "path": "apps/mcp-client" }
   ]

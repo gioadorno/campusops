@@ -6,6 +6,7 @@
     { "path": "../../packages/contracts" },
     { "path": "../../packages/auth" },
     { "path": "../../packages/audit" },
-    { "path": "../../packages/config" }
+    { "path": "../../packages/config" },
+    { "path": "../../packages/aws" }
   ]
 }

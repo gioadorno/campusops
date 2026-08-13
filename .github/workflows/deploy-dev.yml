@@ -1,0 +1,57 @@
+name: Deploy dev
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    environment: dev
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm build:lambda
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" -backend-config="region=${{ vars.AWS_REGION }}"
+        working-directory: infrastructure/environments/dev
+      - run: terraform plan -out=tfplan -var="state_bucket_name=${{ vars.TF_STATE_BUCKET }}" -var="aws_region=${{ vars.AWS_REGION }}"
+        working-directory: infrastructure/environments/dev
+      - run: terraform apply -auto-approve tfplan
+        working-directory: infrastructure/environments/dev
+      - run: pnpm seed:aws
+        env:
+          CAMPUSOPS_RUNTIME: aws
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          CAMPUSOPS_TABLE_NAME: campusops-dev-operational
+          CAMPUSOPS_AUDIT_TABLE_NAME: campusops-dev-audit
+          COGNITO_USER_POOL_ID: deployment-seed-not-used
+          COGNITO_CLIENT_ID: deployment-seed-not-used
+          ALLOWED_ORIGINS: http://localhost:3000
+          ENVIRONMENT: dev
+      - name: Verify protected endpoint
+        run: |
+          endpoint=$(terraform output -raw mcp_endpoint)
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' "$endpoint")
+          test "$status" = "401"
+        working-directory: infrastructure/environments/dev

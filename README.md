@@ -1,24 +1,22 @@
 # CampusOps MCP Gateway
 
-CampusOps MCP Gateway is a local-first, fictional enterprise Model Context Protocol (MCP) platform. Phase 1 demonstrates how an AI host can discover carefully bounded capabilities while authentication, authorization, ownership, validation, idempotency, and auditing remain deterministic server responsibilities.
+CampusOps MCP Gateway is a fictional enterprise Model Context Protocol (MCP) platform. Phase 1 established the local secure MCP foundation. Phase 2 adds an AWS serverless production foundation while preserving the application/domain contracts.
 
 MCP is an open protocol that gives AI applications a standard way to discover and invoke tools, read contextual resources, and use reusable prompt templates. MCP does not replace application security: the model proposes a call, while this gateway validates and authorizes it.
 
-No real university data or branding is used. Phase 1 has no AWS infrastructure or cloud dependency.
+No real university data or branding is used.
 
 ## Architecture
 
 ```text
-MCP client
-    │ Streamable HTTP or stdio
-    ▼
-MCP transport + thin registration adapter
-    │ authenticated Principal
-    ▼
-CampusOps application service
-    ├── authorization policy
-    ├── audit sink
-    └── in-memory repositories
+Local: MCP client → HTTP/stdio → LocalJwtAuth → CampusOpsService → InMemory adapters
+
+AWS:   Cognito → API Gateway JWT authorizer → Lambda MCP adapter
+                                               ↓ Principal
+                                          CampusOpsService
+                                               ↓ interfaces
+               ┌───────────────────────────────┼──────────────────────────────┐
+        InMemory policies            DynamoDB operations             DynamoDB audit
 ```
 
 The monorepo uses pnpm workspaces:
@@ -29,6 +27,8 @@ The monorepo uses pnpm workspaces:
 - `packages/auth`: signed local JWT issuer/verifier, principals, and scope checks.
 - `packages/audit`: transport-independent audit event contract and in-memory sink.
 - `packages/config`: validated local runtime configuration.
+- `packages/aws`: validated AWS configuration and AWS client construction.
+- `infrastructure`: Terraform bootstrap, reusable modules, and the dev environment.
 - `docs`: architecture, MCP design, threat model, and decision records.
 
 Business logic never lives in transport setup or directly in the registration callbacks. `Dependencies` references only the `PolicyRepository`, `ServiceRepository`, and `SupportRequestRepository` interfaces; `createDependencies()` selects their `InMemory*Repository` Phase 1 adapters. Tools and all five resources therefore follow the same transport → adapter → application service → repository interface → adapter path. Persistent adapters can replace them without changing MCP contracts or application behavior.
@@ -85,6 +85,16 @@ pnpm --filter @campusops/mcp-server stdio
 
 The stdio adapter uses the same server factory, application service, repositories, authorization checks, and audit sink. Its fixed development principal is suitable only for local testing.
 
+Runtime mode is explicit: local entrypoints use `CAMPUSOPS_RUNTIME=local` semantics and `LocalJwtAuth`; Lambda requires `CAMPUSOPS_RUNTIME=aws`, Cognito/API Gateway identity, DynamoDB table names, region, environment, and an exact comma-separated `ALLOWED_ORIGINS`. AWS mode does not use or require `JWT_SECRET`.
+
+## AWS mode
+
+Phase 2 provisions Cognito authorization-code/PKCE authentication, an API Gateway HTTP API JWT authorizer, stateless Lambda MCP execution, on-demand DynamoDB operational/audit tables, finite-retention CloudWatch logs, dashboard/alarms, and separate least-privilege runtime/deployment IAM roles. External `campusops/*.read|write` OAuth scopes map explicitly to the unchanged internal scopes. API Gateway authenticates; `CampusOpsService` still authorizes every tool, resource, and prompt and enforces record ownership.
+
+Support-request and service repositories are durable DynamoDB adapters. Idempotency uses a conditional transaction to atomically create the fingerprint record and request; concurrent losers consistently reread the winner. Audit events are append-only writes to a separate table and never contain MCP payloads or credentials. Policy retrieval intentionally remains `InMemoryPolicyRepository` until the Phase 3 knowledge architecture.
+
+Build the deterministic Lambda artifact with `pnpm build:lambda`. Terraform is organized under `infrastructure/modules`, with a one-time S3 state bootstrap and a dev composition using native S3 lockfiles. The manual **Deploy dev** GitHub workflow runs through the protected `dev` environment and assumes an AWS role with OIDC—never permanent AWS access-key secrets. See [AWS architecture](docs/aws-architecture.md), [AWS security](docs/aws-security.md), and [deployment](docs/deployment.md).
+
 ## Validation and contract tests
 
 ```bash
@@ -98,6 +108,7 @@ pnpm test:contract
 The contract suite starts an ephemeral local HTTP server and uses the official MCP v2 client to list tools/resources/prompts, read every resource, get a prompt, invoke every read-only tool, test create/cancel behavior, prove same-payload retries create once, reject conflicting payload reuse, and verify scope and ownership failures. Idempotency records are scoped by user and store a SHA-256 fingerprint over canonical `category`, `title`, `description`, and `severity` fields.
 
 GitHub Actions runs the frozen-lockfile install, lint, typecheck, unit/integration tests, build, and dedicated contract suite for every pull request and push to `master` using Node 20 and pnpm 10.33.0.
+Pull requests also run Terraform formatting, backend-free initialization, and validation; they never apply infrastructure.
 
 ## Protocol compatibility
 
@@ -110,3 +121,7 @@ Phase 1 intentionally implements none of this. A future phase can place a harden
 ## Security considerations
 
 Inputs are strict and bounded, scopes are least-privilege, side effects require explicit write permission, idempotency is user-scoped and payload-bound, ownership is enforced server-side with non-enumerating public errors, production JWT configuration fails closed, and audit payloads exclude sensitive content. MCP metadata is treated as untrusted presentation data rather than authority. See [the threat model](docs/threat-model.md) for attack-specific controls and residual risks.
+
+## Phase 2 limitations
+
+Lambda supports stateless MCP `POST /mcp`; authenticated `GET /mcp` returns 405 because SSE/server-initiated streams and sessionful MCP are not supported. Phase 2 does not contain Amazon Bedrock invocation, Bedrock Knowledge Bases, OpenSearch, RAG, AgentCore Gateway, or a frontend/chat application. Those remain Phase 3 work.

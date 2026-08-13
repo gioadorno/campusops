@@ -24,3 +24,21 @@ Repository interfaces keep policy, service, and support access behind the applic
 ## Availability and local limitations
 
 Schema limits constrain individual payloads, but Phase 1 has no HTTP rate limiter, concurrency budget, durable queue, or circuit breaker. The in-memory repositories and audit sink are neither durable nor horizontally consistent. These are accepted local-demo limitations, not production guarantees.
+
+## Phase 2 AWS threats
+
+| Threat                            | Mitigation                                                                                                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stolen OAuth access token         | Short Cognito access-token lifetime, TLS-only API, least-privilege scopes, no token logging, and revocation/credential reset procedures.                    |
+| Incorrect scope mapping           | Closed, unit-tested external-to-internal map; unknown scopes confer nothing; application checks remain authoritative.                                       |
+| API Gateway bypass assumptions    | Lambda derives identity only from authorizer claims; direct invocation requires IAM and malformed/missing claims fail; CampusOpsService still authorizes.   |
+| Lambda direct invocation          | No public function URL; API Gateway permission is source-ARN constrained; IAM governs direct invoke.                                                        |
+| IAM privilege escalation          | Runtime/deployment roles are separate, actions enumerated, resources CampusOps-scoped, OIDC trust repository/environment constrained.                       |
+| DynamoDB tenant exposure          | User queries bind GSI keys to Cognito `sub`; direct gets receive application ownership checks; table access is runtime-role only.                           |
+| Audit tampering                   | Separate encrypted/PITR table; runtime has PutItem only; safe immutable event shape; operators monitor write failures.                                      |
+| Terraform state exposure          | Dedicated encrypted/versioned/private S3 bucket, native lockfile, least-privilege state paths, no outputs containing secrets.                               |
+| Compromised workflow or OIDC role | `dev` environment approvals, protected workflow review, short-lived OIDC credentials, exact repository/environment trust subject, separate deployment role. |
+| Origin/DNS rebinding              | Exact configured origins, no wildcard, browser Origin checked in Lambda; absent Origin allowed only for non-browser MCP clients.                            |
+| Replay/concurrent idempotency     | Canonical SHA-256 payload binding, transactional conditional creation, consistent winner re-read, and TTL cleanup.                                          |
+
+Authentication, application authorization, record ownership, runtime IAM permissions, and deployment permissions are independent boundaries; success at one never implies success at another.

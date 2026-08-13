@@ -1,0 +1,11 @@
+variable "name" { type = string }
+variable "operational_table_arn" { type = string }
+variable "operational_index_arn" { type = string }
+variable "audit_table_arn" { type = string }
+variable "log_group_arn" { type = string }
+variable "github_repository" { type = string }
+variable "state_bucket_arn" { type = string }
+variable "state_key" { type = string }
+variable "region" { type = string }
+variable "account_id" { type = string }
+variable "tags" { type = map(string) }

@@ -14,13 +14,17 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx src/http.ts",
     "start": "node dist/http.js",
-    "stdio": "tsx src/stdio.ts"
+    "stdio": "tsx src/stdio.ts",
+    "seed:aws": "tsx ../../scripts/seed-aws.ts"
   },
   "dependencies": {
     "@campusops/audit": "workspace:*",
+    "@campusops/aws": "workspace:*",
     "@campusops/auth": "workspace:*",
     "@campusops/config": "workspace:*",
     "@campusops/contracts": "workspace:*",
+    "@aws-sdk/lib-dynamodb": "^3.864.0",
+    "@types/aws-lambda": "^8.10.152",
     "@modelcontextprotocol/node": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",
     "zod": "^4.0.17"
