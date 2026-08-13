@@ -18,6 +18,12 @@ const text = (result: Awaited<ReturnType<Client['callTool']>>) => {
   return JSON.parse(item.text) as Record<string, unknown> | unknown[];
 };
 
+const rawText = (result: Awaited<ReturnType<Client['callTool']>>) => {
+  const item = result.content[0];
+  if (!item || item.type !== 'text') throw new Error('Expected a text tool result');
+  return item.text;
+};
+
 describe('MCP HTTP contract', () => {
   const auth = new LocalJwtAuth(secret);
   const audit = new InMemoryAuditSink();
@@ -67,8 +73,16 @@ describe('MCP HTTP contract', () => {
     expect(prompts.prompts.map((prompt) => prompt.name)).toEqual(
       expect.arrayContaining(['triage-support-request', 'policy-answer'])
     );
-    const resource = await client.readResource({ uri: 'policy://catalog' });
-    expect(resource.contents[0]).toMatchObject({ uri: 'policy://catalog' });
+    for (const uri of [
+      'policy://catalog',
+      'policy://categories/security',
+      'services://catalog',
+      'support://categories',
+      'platform://capabilities'
+    ]) {
+      const resource = await client.readResource({ uri });
+      expect(resource.contents[0]).toMatchObject({ uri });
+    }
     const prompt = await client.getPrompt({
       name: 'policy-answer',
       arguments: { question: 'How should accounts be protected?' }
@@ -108,6 +122,12 @@ describe('MCP HTTP contract', () => {
     };
     expect(first.created).toBe(true);
     expect(second).toMatchObject({ created: false, request: { id: first.request.id } });
+    const conflict = await client.callTool({
+      name: 'create_support_request',
+      arguments: { ...args, description: 'Conflicting payload for the same key.' }
+    });
+    expect(conflict.isError).toBe(true);
+    expect(rawText(conflict)).toBe('Idempotency key conflicts with an existing request');
     const cancelled = await client.callTool({
       name: 'cancel_support_request',
       arguments: { requestId: first.request.id }
@@ -115,7 +135,7 @@ describe('MCP HTTP contract', () => {
     expect(cancelled.isError).not.toBe(true);
   });
 
-  it('returns tool errors for unauthorized and ownership-violating calls', async () => {
+  it('returns normalized tool errors for unauthorized, missing, and ownership calls', async () => {
     const limited = await connect({
       userId: 'user-alex',
       sessionId: 'limited-session',
@@ -138,9 +158,26 @@ describe('MCP HTTP contract', () => {
       arguments: { requestId: 'req-blair-001' }
     });
     expect(ownership.isError).toBe(true);
+    const missing = await client.callTool({
+      name: 'get_support_request',
+      arguments: { requestId: 'req-does-not-exist' }
+    });
+    expect(missing.isError).toBe(true);
+    expect(rawText(ownership)).toBe('Resource not found or unavailable');
+    expect(rawText(missing)).toBe(rawText(ownership));
     expect(audit.events).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ authorizationDecision: 'deny', tool: 'create_support_request' })
+        expect.objectContaining({
+          authorizationDecision: 'deny',
+          denialReason: 'scope',
+          tool: 'create_support_request'
+        }),
+        expect.objectContaining({
+          authorizationDecision: 'deny',
+          denialReason: 'ownership',
+          result: 'denied',
+          tool: 'get_support_request'
+        })
       ])
     );
   });

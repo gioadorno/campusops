@@ -18,3 +18,10 @@ export class ConflictError extends Error {
     this.name = 'ConflictError';
   }
 }
+
+export class IdempotencyConflictError extends ConflictError {
+  constructor() {
+    super('Idempotency key was already used with a different request payload');
+    this.name = 'IdempotencyConflictError';
+  }
+}

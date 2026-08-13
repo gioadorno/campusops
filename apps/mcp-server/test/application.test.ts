@@ -7,7 +7,7 @@ import {
   searchPoliciesInput
 } from '@campusops/contracts';
 import { CampusOpsService, createDependencies, type Dependencies } from '../src/application.js';
-import { OwnershipError } from '../src/errors.js';
+import { IdempotencyConflictError, OwnershipError } from '../src/errors.js';
 
 const alex: Principal = {
   userId: 'user-alex',
@@ -61,6 +61,7 @@ describe('CampusOps application security', () => {
       traceId: 'trace-denied',
       authorizationDecision: 'deny',
       result: 'denied',
+      denialReason: 'scope',
       requiredScopes: ['requests:write']
     });
   });
@@ -69,7 +70,11 @@ describe('CampusOps application security', () => {
     await expect(
       service.getSupportRequest({ principal: alex }, 'req-blair-001')
     ).rejects.toBeInstanceOf(OwnershipError);
-    expect(audit.events[0]).toMatchObject({ result: 'error', authorizationDecision: 'allow' });
+    expect(audit.events[0]).toMatchObject({
+      result: 'denied',
+      authorizationDecision: 'deny',
+      denialReason: 'ownership'
+    });
   });
 
   it('uses user-scoped idempotency and does not duplicate a request', async () => {
@@ -86,6 +91,38 @@ describe('CampusOps application security', () => {
     expect(second.created).toBe(false);
     expect(second.request.id).toBe(first.request.id);
     expect(dependencies.support.countForUser(alex.userId)).toBe(2);
+  });
+
+  it('rejects idempotency-key reuse with a different canonical payload', async () => {
+    const original = createSupportRequestInput.parse({
+      category: 'software',
+      title: 'Editor install',
+      description: 'Install the fictional editor.',
+      severity: 'low',
+      idempotencyKey: 'payload-bound-1'
+    });
+    await service.createSupportRequest({ principal: alex }, original);
+    await expect(
+      service.createSupportRequest(
+        { principal: alex },
+        { ...original, description: 'A different operation must not reuse this key.' }
+      )
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
+    expect(dependencies.support.countForUser(alex.userId)).toBe(2);
+  });
+
+  it('loads every MCP resource through application and repository boundaries', async () => {
+    await expect(service.getPolicyCatalog({ principal: alex })).resolves.toHaveLength(3);
+    await expect(
+      service.getPoliciesByCategory({ principal: alex }, 'security')
+    ).resolves.toHaveLength(1);
+    await expect(service.getServiceCatalog({ principal: alex })).resolves.toHaveLength(2);
+    await expect(service.getSupportCategories({ principal: alex })).resolves.toContain('network');
+    await expect(service.getPlatformCapabilities({ principal: alex })).resolves.toMatchObject({
+      tools: 6,
+      resources: 5,
+      prompts: 2
+    });
   });
 
   it('emits a complete audit event without sensitive arguments', async () => {
