@@ -93,10 +93,11 @@ resource "aws_iam_role_policy" "github_deploy" {
         Sid    = "ManageTaggedCampusOpsCognito"
         Effect = "Allow"
         Action = [
-          "cognito-idp:UpdateUserPool", "cognito-idp:DescribeUserPool", "cognito-idp:DeleteUserPool",
+          "cognito-idp:UpdateUserPool", "cognito-idp:DescribeUserPool", "cognito-idp:GetUserPoolMfaConfig", "cognito-idp:DeleteUserPool",
           "cognito-idp:CreateUserPoolClient", "cognito-idp:UpdateUserPoolClient", "cognito-idp:DescribeUserPoolClient", "cognito-idp:DeleteUserPoolClient",
           "cognito-idp:CreateResourceServer", "cognito-idp:UpdateResourceServer", "cognito-idp:DescribeResourceServer", "cognito-idp:DeleteResourceServer",
-          "cognito-idp:CreateUserPoolDomain", "cognito-idp:DescribeUserPoolDomain", "cognito-idp:DeleteUserPoolDomain",
+          "cognito-idp:CreateUserPoolDomain", "cognito-idp:UpdateUserPoolDomain", "cognito-idp:DeleteUserPoolDomain",
+          "cognito-idp:CreateManagedLoginBranding", "cognito-idp:DescribeManagedLoginBranding", "cognito-idp:DescribeManagedLoginBrandingByClient", "cognito-idp:UpdateManagedLoginBranding", "cognito-idp:DeleteManagedLoginBranding", "cognito-idp:ListUserPoolClients",
           "cognito-idp:TagResource", "cognito-idp:UntagResource", "cognito-idp:ListTagsForResource"
         ]
         Resource = ["arn:aws:cognito-idp:${var.aws_region}:${local.account_id}:userpool/*"]
@@ -108,28 +109,57 @@ resource "aws_iam_role_policy" "github_deploy" {
         }
       },
       {
-        Sid    = "ManageCampusOpsApplicationResources"
-        Effect = "Allow"
-        Action = [
-          "lambda:CreateFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunction", "lambda:DeleteFunction", "lambda:AddPermission", "lambda:RemovePermission", "lambda:TagResource", "lambda:UntagResource", "lambda:ListTags",
-          "dynamodb:CreateTable", "dynamodb:UpdateTable", "dynamodb:DescribeTable", "dynamodb:DeleteTable", "dynamodb:UpdateTimeToLive", "dynamodb:DescribeTimeToLive", "dynamodb:TagResource", "dynamodb:UntagResource", "dynamodb:ListTagsOfResource",
-          "apigateway:GET", "apigateway:POST", "apigateway:PATCH", "apigateway:DELETE",
-          "logs:CreateLogGroup", "logs:PutRetentionPolicy", "logs:DeleteLogGroup", "logs:TagResource", "logs:UntagResource", "logs:ListTagsForResource",
-          "cloudwatch:PutDashboard", "cloudwatch:DeleteDashboards", "cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms", "cloudwatch:DescribeAlarms"
-        ]
-        Resource = [
-          "arn:aws:lambda:${var.aws_region}:${local.account_id}:function:${local.application_name}*",
-          "arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.application_name}*",
-          "arn:aws:apigateway:${var.aws_region}::/apis*",
-          "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.application_name}*",
-          "arn:aws:cloudwatch::${local.account_id}:dashboard/${local.application_name}*",
-          "arn:aws:cloudwatch:${var.aws_region}:${local.account_id}:alarm:${local.application_name}*"
-        ]
+        Sid      = "ReadCognitoUserPoolDomain"
+        Effect   = "Allow"
+        Action   = ["cognito-idp:DescribeUserPoolDomain"]
+        Resource = "*"
+      },
+      {
+        Sid      = "ManageCampusOpsLambda"
+        Effect   = "Allow"
+        Action   = ["lambda:CreateFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:GetFunctionConcurrency", "lambda:GetFunctionCodeSigningConfig", "lambda:GetPolicy", "lambda:DeleteFunction", "lambda:AddPermission", "lambda:RemovePermission", "lambda:TagResource", "lambda:UntagResource", "lambda:ListTags"]
+        Resource = ["arn:aws:lambda:${var.aws_region}:${local.account_id}:function:${local.application_name}*"]
+      },
+      {
+        Sid      = "ManageCampusOpsDynamoDb"
+        Effect   = "Allow"
+        Action   = ["dynamodb:CreateTable", "dynamodb:UpdateTable", "dynamodb:DescribeTable", "dynamodb:DeleteTable", "dynamodb:UpdateTimeToLive", "dynamodb:DescribeTimeToLive", "dynamodb:UpdateContinuousBackups", "dynamodb:DescribeContinuousBackups", "dynamodb:TagResource", "dynamodb:UntagResource", "dynamodb:ListTagsOfResource"]
+        Resource = ["arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.application_name}-*"]
+      },
+      {
+        Sid      = "ManageCampusOpsApiGateway"
+        Effect   = "Allow"
+        Action   = ["apigateway:GET", "apigateway:POST", "apigateway:PATCH", "apigateway:DELETE"]
+        Resource = ["arn:aws:apigateway:${var.aws_region}::/apis*"]
+      },
+      {
+        Sid      = "ManageCampusOpsLogGroup"
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:PutRetentionPolicy", "logs:DeleteLogGroup", "logs:TagResource", "logs:UntagResource", "logs:ListTagsForResource"]
+        Resource = ["arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.application_name}*"]
+      },
+      {
+        Sid      = "ManageCampusOpsDashboard"
+        Effect   = "Allow"
+        Action   = ["cloudwatch:PutDashboard", "cloudwatch:GetDashboard", "cloudwatch:DeleteDashboards", "cloudwatch:TagResource", "cloudwatch:UntagResource", "cloudwatch:ListTagsForResource"]
+        Resource = ["arn:aws:cloudwatch::${local.account_id}:dashboard/${local.application_name}*"]
+      },
+      {
+        Sid      = "ManageCampusOpsAlarms"
+        Effect   = "Allow"
+        Action   = ["cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms", "cloudwatch:DescribeAlarms", "cloudwatch:TagResource", "cloudwatch:UntagResource", "cloudwatch:ListTagsForResource"]
+        Resource = ["arn:aws:cloudwatch:${var.aws_region}:${local.account_id}:alarm:${local.application_name}*"]
+      },
+      {
+        Sid      = "ReadCloudWatchLogGroups"
+        Effect   = "Allow"
+        Action   = ["logs:DescribeLogGroups"]
+        Resource = "*"
       },
       {
         Sid      = "ManageLambdaRuntimeRoleOnly"
         Effect   = "Allow"
-        Action   = ["iam:GetRole", "iam:CreateRole", "iam:DeleteRole", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy", "iam:TagRole", "iam:UntagRole", "iam:ListRoleTags"]
+        Action   = ["iam:GetRole", "iam:CreateRole", "iam:DeleteRole", "iam:UpdateAssumeRolePolicy", "iam:UpdateRole", "iam:UpdateRoleDescription", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole", "iam:TagRole", "iam:UntagRole", "iam:ListRoleTags"]
         Resource = [local.runtime_role_arn]
       },
       {

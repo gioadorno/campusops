@@ -26,6 +26,8 @@ The role trust subject is exactly `repo:gioadorno/campusops:environment:dev`. No
 
 For the first deployment, an authorized operator applies bootstrap first and then supplies its deployment-role output to the GitHub `dev` environment. The deployment role can create a tagged CampusOps Cognito user pool even though that create API cannot be scoped to a not-yet-existing ARN; all later Cognito operations are resource/tag constrained. If the AWS account already has the GitHub OIDC provider, import it into bootstrap state rather than creating a duplicate.
 
+CampusOps pins the native HashiCorp AWS provider to `~> 6.12.0`. Version 6.12.0 is the minimum release with `aws_cognito_managed_login_branding`; the upgrade from 5.100.0 was reviewed against the v6 migration guide. The only listed change affecting a CampusOps resource type is the computed `aws_s3_bucket.region` rename to `bucket_region`, and CampusOps references neither field.
+
 ## Test user and PKCE token
 
 Never place a password or token in source control. Create a fictional user interactively:
@@ -34,7 +36,7 @@ Never place a password or token in source control. Create a fictional user inter
 aws cognito-idp admin-create-user --user-pool-id <pool-id> --username dev.user@example.test
 ```
 
-Complete the temporary-password flow in the Cognito hosted UI. Generate a PKCE verifier/challenge locally and open the hosted authorization endpoint with `response_type=code`, the Terraform client ID, an allow-listed redirect URI, and scopes such as `openid campusops/policies.read campusops/services.read campusops/requests.read campusops/requests.write`. Exchange the returned code at `/oauth2/token` with the verifier. Do not use a client secret: the app client is public and PKCE-based.
+Terraform configures the user-pool domain for managed login version 2 and associates a Cognito-provided default branding style with the public PKCE app client; no custom visual assets are installed. Complete the temporary-password flow in that managed-login UI. Generate a PKCE verifier/challenge locally and open `https://<terraform-domain-output>.auth.<region>.amazoncognito.com/oauth2/authorize` with `response_type=code`, the Terraform client ID, an allow-listed `redirect_uri`, `code_challenge`, `code_challenge_method=S256`, and scopes such as `openid campusops/policies.read campusops/services.read campusops/requests.read campusops/requests.write`. Exchange the returned code at `/oauth2/token` with the original verifier. Do not use a client secret: the app client is public and PKCE-based.
 
 Then run the optional deployed smoke test:
 

@@ -39,12 +39,19 @@ resource "aws_cognito_user_pool_client" "pkce" {
   token_validity_units { access_token = "minutes" }
 }
 resource "aws_cognito_user_pool_domain" "this" {
-  domain       = var.name
-  user_pool_id = aws_cognito_user_pool.this.id
+  domain                = var.name
+  user_pool_id          = aws_cognito_user_pool.this.id
+  managed_login_version = 2
+}
+resource "aws_cognito_managed_login_branding" "pkce" {
+  user_pool_id                = aws_cognito_user_pool.this.id
+  client_id                   = aws_cognito_user_pool_client.pkce.id
+  use_cognito_provided_values = true
+  depends_on                  = [aws_cognito_user_pool_domain.this]
 }
 output "user_pool_id" { value = aws_cognito_user_pool.this.id }
 output "client_id" { value = aws_cognito_user_pool_client.pkce.id }
-output "issuer" { value = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.this.id}" }
+output "issuer" { value = "https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${aws_cognito_user_pool.this.id}" }
 output "domain" { value = aws_cognito_user_pool_domain.this.domain }
 output "scope_identifiers" { value = aws_cognito_resource_server.campusops.scope_identifiers }
 data "aws_region" "current" {}

@@ -89,7 +89,7 @@ Runtime mode is explicit: local entrypoints use `CAMPUSOPS_RUNTIME=local` semant
 
 ## AWS mode
 
-Phase 2 provisions Cognito authorization-code/PKCE authentication, an API Gateway HTTP API JWT authorizer, stateless Lambda MCP execution, on-demand DynamoDB operational/audit tables, finite-retention CloudWatch logs, dashboard/alarms, and separate least-privilege runtime/deployment IAM roles. External `campusops/*.read|write` OAuth scopes map explicitly to the unchanged internal scopes. API Gateway requires at least one CampusOps scope on either MCP route; `CampusOpsService` still authorizes every tool, resource, and prompt exactly and enforces record ownership.
+Phase 2 provisions Cognito authorization-code/PKCE authentication with Terraform-managed default managed-login branding, an API Gateway HTTP API JWT authorizer, stateless Lambda MCP execution, on-demand DynamoDB operational/audit tables, finite-retention CloudWatch logs, dashboard/alarms, and separate least-privilege runtime/deployment IAM roles. External `campusops/*.read|write` OAuth scopes map explicitly to the unchanged internal scopes. API Gateway requires at least one CampusOps scope on either MCP route; `CampusOpsService` still authorizes every tool, resource, and prompt exactly and enforces record ownership.
 
 Support-request and service repositories are durable DynamoDB adapters. Idempotency uses a conditional transaction to atomically create the fingerprint record and request; concurrent losers consistently reread the winner. Audit events are append-only writes to a separate table and never contain MCP payloads or credentials. Policy retrieval intentionally remains `InMemoryPolicyRepository` until the Phase 3 knowledge architecture.
 
