@@ -4,3 +4,8 @@ coverage/
 .env
 *.log
 *.tsbuildinfo
+dist/aws/
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan

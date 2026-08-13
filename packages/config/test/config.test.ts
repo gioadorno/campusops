@@ -3,6 +3,7 @@ import { DEVELOPMENT_JWT_SECRET, loadConfig } from '../src/index.js';
 
 describe('JWT configuration', () => {
   it('allows the local fallback in development and test', () => {
+    expect(loadConfig({}).CAMPUSOPS_RUNTIME).toBe('local');
     expect(loadConfig({ NODE_ENV: 'development' }).JWT_SECRET).toBe(DEVELOPMENT_JWT_SECRET);
     expect(loadConfig({ NODE_ENV: 'test' }).JWT_SECRET).toBe(DEVELOPMENT_JWT_SECRET);
   });

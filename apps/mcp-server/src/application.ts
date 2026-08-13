@@ -12,6 +12,8 @@ import {
   InMemoryPolicyRepository,
   InMemoryServiceRepository,
   InMemorySupportRequestRepository,
+  StaticPlatformCapabilitiesProvider,
+  type PlatformCapabilitiesProvider,
   type PolicyRepository,
   type ServiceRepository,
   type SupportRequestRepository
@@ -26,6 +28,7 @@ export interface Dependencies {
   policies: PolicyRepository;
   services: ServiceRepository;
   support: SupportRequestRepository;
+  capabilities: PlatformCapabilitiesProvider;
   audit: AuditSink;
 }
 
@@ -33,6 +36,7 @@ export const createDependencies = (audit: AuditSink): Dependencies => ({
   policies: new InMemoryPolicyRepository(),
   services: new InMemoryServiceRepository(),
   support: new InMemorySupportRequestRepository(),
+  capabilities: new StaticPlatformCapabilitiesProvider(),
   audit
 });
 
@@ -91,8 +95,8 @@ export class CampusOpsService {
   }
 
   getServiceStatus(context: OperationContext, serviceId: string) {
-    return this.run(context, 'read', 'get_service_status', ['services:read'], () => {
-      const service = this.dependencies.services.find(serviceId);
+    return this.run(context, 'read', 'get_service_status', ['services:read'], async () => {
+      const service = await this.dependencies.services.find(serviceId);
       if (!service) throw new NotFoundError('Service');
       return service;
     });
@@ -105,8 +109,8 @@ export class CampusOpsService {
   }
 
   getSupportRequest(context: OperationContext, requestId: string) {
-    return this.run(context, 'read', 'get_support_request', ['requests:read'], () => {
-      const request = this.dependencies.support.find(requestId);
+    return this.run(context, 'read', 'get_support_request', ['requests:read'], async () => {
+      const request = await this.dependencies.support.find(requestId);
       if (!request) throw new NotFoundError('Support request');
       if (request.userId !== context.principal.userId) throw new OwnershipError();
       return request;
@@ -120,8 +124,8 @@ export class CampusOpsService {
   }
 
   cancelSupportRequest(context: OperationContext, requestId: string) {
-    return this.run(context, 'cancel', 'cancel_support_request', ['requests:write'], () => {
-      const request = this.dependencies.support.find(requestId);
+    return this.run(context, 'cancel', 'cancel_support_request', ['requests:write'], async () => {
+      const request = await this.dependencies.support.find(requestId);
       if (!request) throw new NotFoundError('Support request');
       if (request.userId !== context.principal.userId) throw new OwnershipError();
       if (request.status === 'closed') throw new ConflictError('Support request is already closed');
@@ -130,7 +134,7 @@ export class CampusOpsService {
         status: 'closed' as const,
         updatedAt: new Date().toISOString()
       };
-      this.dependencies.support.save(cancelled);
+      await this.dependencies.support.save(cancelled);
       return cancelled;
     });
   }
@@ -165,7 +169,7 @@ export class CampusOpsService {
 
   getPlatformCapabilities(context: OperationContext) {
     return this.run(context, 'read_resource', 'platform://capabilities', [], () =>
-      this.dependencies.services.platformCapabilities()
+      this.dependencies.capabilities.get()
     );
   }
 

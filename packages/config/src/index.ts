@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const DEVELOPMENT_JWT_SECRET = 'local-development-secret-change-me-123456';
 
 const configInputSchema = z.object({
+  CAMPUSOPS_RUNTIME: z.literal('local').default('local'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -10,6 +11,7 @@ const configInputSchema = z.object({
 });
 
 export interface AppConfig {
+  CAMPUSOPS_RUNTIME: 'local';
   NODE_ENV: 'development' | 'test' | 'production';
   HOST: string;
   PORT: number;

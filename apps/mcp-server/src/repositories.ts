@@ -9,20 +9,16 @@ import { initialSupportRequests, policies, services } from './data.js';
 import { IdempotencyConflictError } from './errors.js';
 
 export interface PolicyRepository {
-  search(query: string, category: string | undefined, limit: number): Policy[];
-  catalog(): readonly Omit<Policy, 'body'>[];
-  findByCategory(category: string): readonly Policy[];
+  search(query: string, category: string | undefined, limit: number): MaybePromise<Policy[]>;
+  catalog(): MaybePromise<readonly Omit<Policy, 'body'>[]>;
+  findByCategory(category: string): MaybePromise<readonly Policy[]>;
 }
 
+export type MaybePromise<T> = T | Promise<T>;
+
 export interface ServiceRepository {
-  find(serviceId: string): ServiceStatus | undefined;
-  all(): readonly ServiceStatus[];
-  platformCapabilities(): Readonly<{
-    tools: number;
-    resources: number;
-    prompts: number;
-    transport: readonly string[];
-  }>;
+  find(serviceId: string): MaybePromise<ServiceStatus | undefined>;
+  all(): MaybePromise<readonly ServiceStatus[]>;
 }
 
 export interface SupportRequestRepository {
@@ -30,15 +26,37 @@ export interface SupportRequestRepository {
     userId: string,
     status: SupportRequest['status'] | undefined,
     limit: number
-  ): SupportRequest[];
-  find(requestId: string): SupportRequest | undefined;
+  ): MaybePromise<SupportRequest[]>;
+  find(requestId: string): MaybePromise<SupportRequest | undefined>;
   create(
     userId: string,
     input: CreateSupportRequestInput
-  ): { request: SupportRequest; created: boolean };
-  save(request: SupportRequest): void;
-  categories(): readonly string[];
-  countForUser(userId: string): number;
+  ): MaybePromise<{ request: SupportRequest; created: boolean }>;
+  save(request: SupportRequest): MaybePromise<void>;
+  categories(): MaybePromise<readonly string[]>;
+  countForUser(userId: string): MaybePromise<number>;
+}
+
+export interface PlatformCapabilitiesProvider {
+  get(): MaybePromise<
+    Readonly<{
+      tools: number;
+      resources: number;
+      prompts: number;
+      transport: readonly string[];
+    }>
+  >;
+}
+
+export class StaticPlatformCapabilitiesProvider implements PlatformCapabilitiesProvider {
+  get() {
+    return {
+      tools: 6,
+      resources: 5,
+      prompts: 2,
+      transport: ['streamable-http', 'stdio'] as const
+    };
+  }
 }
 
 export class InMemoryPolicyRepository implements PolicyRepository {
@@ -78,15 +96,6 @@ export class InMemoryServiceRepository implements ServiceRepository {
   all(): readonly ServiceStatus[] {
     return services;
   }
-
-  platformCapabilities() {
-    return {
-      tools: 6,
-      resources: 5,
-      prompts: 2,
-      transport: ['streamable-http', 'stdio'] as const
-    };
-  }
 }
 
 interface IdempotencyRecord {
@@ -94,7 +103,7 @@ interface IdempotencyRecord {
   fingerprint: string;
 }
 
-const fingerprint = (input: CreateSupportRequestInput): string =>
+export const supportRequestFingerprint = (input: CreateSupportRequestInput): string =>
   createHash('sha256')
     .update(
       JSON.stringify({
@@ -129,7 +138,7 @@ export class InMemorySupportRequestRepository implements SupportRequestRepositor
     input: CreateSupportRequestInput
   ): { request: SupportRequest; created: boolean } {
     const key = `${userId}:${input.idempotencyKey}`;
-    const payloadFingerprint = fingerprint(input);
+    const payloadFingerprint = supportRequestFingerprint(input);
     const existing = this.idempotency.get(key);
     if (existing) {
       if (existing.fingerprint !== payloadFingerprint) throw new IdempotencyConflictError();
