@@ -5,7 +5,8 @@ import {
   QueryCommand,
   ScanCommand,
   TransactWriteCommand,
-  type DynamoDBDocumentClient
+  type DynamoDBDocumentClient,
+  type NativeAttributeValue
 } from '@aws-sdk/lib-dynamodb';
 import type {
   CreateSupportRequestInput,
@@ -58,26 +59,35 @@ export class DynamoDbSupportRequestRepository implements SupportRequestRepositor
   ) {}
 
   async listForUser(userId: string, status: SupportRequest['status'] | undefined, limit: number) {
-    const response = await this.client.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: 'GSI1',
-        KeyConditionExpression: 'GSI1PK = :pk',
-        ExpressionAttributeValues: {
-          ':pk': `USER#${userId}`,
-          ...(status ? { ':status': status } : {})
-        },
-        ...(status
-          ? {
-              FilterExpression: '#status = :status',
-              ExpressionAttributeNames: { '#status': 'status' }
-            }
-          : {}),
-        ScanIndexForward: false,
-        Limit: limit
-      })
-    );
-    return (response.Items ?? []).map((item) => supportRequestFromItem(item));
+    const requests: SupportRequest[] = [];
+    let exclusiveStartKey: Record<string, NativeAttributeValue> | undefined;
+
+    do {
+      const response = await this.client.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'GSI1',
+          KeyConditionExpression: 'GSI1PK = :pk',
+          ExpressionAttributeValues: {
+            ':pk': `USER#${userId}`,
+            ...(status ? { ':status': status } : {})
+          },
+          ...(status
+            ? {
+                FilterExpression: '#status = :status',
+                ExpressionAttributeNames: { '#status': 'status' }
+              }
+            : {}),
+          ScanIndexForward: false,
+          Limit: limit - requests.length,
+          ...(exclusiveStartKey ? { ExclusiveStartKey: exclusiveStartKey } : {})
+        })
+      );
+      requests.push(...(response.Items ?? []).map((item) => supportRequestFromItem(item)));
+      exclusiveStartKey = response.LastEvaluatedKey;
+    } while (requests.length < limit && exclusiveStartKey);
+
+    return requests.slice(0, limit);
   }
 
   async find(requestId: string) {

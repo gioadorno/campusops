@@ -46,4 +46,5 @@ output "user_pool_id" { value = aws_cognito_user_pool.this.id }
 output "client_id" { value = aws_cognito_user_pool_client.pkce.id }
 output "issuer" { value = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.this.id}" }
 output "domain" { value = aws_cognito_user_pool_domain.this.domain }
+output "scope_identifiers" { value = aws_cognito_resource_server.campusops.scope_identifiers }
 data "aws_region" "current" {}

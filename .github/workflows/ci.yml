@@ -40,7 +40,6 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
       - run: pnpm build:lambda
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -50,3 +49,7 @@ jobs:
         working-directory: infrastructure/environments/dev
       - run: terraform validate
         working-directory: infrastructure/environments/dev
+      - run: terraform init -backend=false
+        working-directory: infrastructure/bootstrap
+      - run: terraform validate
+        working-directory: infrastructure/bootstrap
