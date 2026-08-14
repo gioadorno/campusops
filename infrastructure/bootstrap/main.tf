@@ -129,10 +129,23 @@ resource "aws_iam_role_policy" "github_deploy" {
       {
         Sid    = "ManageCampusOpsApiGateway"
         Effect = "Allow"
-        Action = ["apigateway:GET", "apigateway:POST", "apigateway:PATCH", "apigateway:DELETE", "apigateway:PUT"]
+        Action = ["apigateway:*"]
+
         Resource = [
           "arn:aws:apigateway:${var.aws_region}::/apis*",
           "arn:aws:apigateway:${var.aws_region}::/tags/*"
+        ]
+      },
+      {
+        Sid    = "SeedCampusOpsOperationalData"
+        Effect = "Allow"
+
+        Action = [
+          "dynamodb:PutItem"
+        ]
+
+        Resource = [
+          "arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.application_name}-operational"
         ]
       },
       {
