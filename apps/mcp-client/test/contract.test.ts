@@ -6,6 +6,7 @@ import { createDependencies } from '../../mcp-server/src/application.js';
 import { startHttpServer, type HttpRuntime } from '../../mcp-server/src/http.js';
 
 const secret = 'contract-test-secret-that-is-more-than-32-characters';
+const correlationId = '6e3ae64f-e0c7-4fc8-91b8-1dc62a7e3ff1';
 const fullPrincipal: Principal = {
   userId: 'user-alex',
   sessionId: 'contract-session-alex',
@@ -31,7 +32,7 @@ describe('MCP HTTP contract', () => {
   let runtime: HttpRuntime;
   let client: Client;
 
-  const connect = async (principal: Principal) => {
+  const connect = async (principal: Principal, traceId?: string) => {
     const token = await auth.issue(principal);
     const candidate = new Client(
       { name: 'campusops-test-client', version: '0.1.0' },
@@ -39,7 +40,12 @@ describe('MCP HTTP contract', () => {
     );
     await candidate.connect(
       new StreamableHTTPClientTransport(new URL(runtime.url), {
-        requestInit: { headers: { Authorization: `Bearer ${token}` } }
+        requestInit: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ...(traceId ? { 'x-campusops-correlation-id': traceId } : {})
+          }
+        }
       })
     );
     return candidate;
@@ -47,7 +53,7 @@ describe('MCP HTTP contract', () => {
 
   beforeAll(async () => {
     runtime = await startHttpServer({ verifier: auth, dependencies });
-    client = await connect(fullPrincipal);
+    client = await connect(fullPrincipal, correlationId);
   });
 
   afterAll(async () => {
@@ -98,6 +104,9 @@ describe('MCP HTTP contract', () => {
       client.callTool({ name: 'get_support_request', arguments: { requestId: 'req-alex-001' } })
     ]);
     expect(calls.every((call) => call.isError !== true)).toBe(true);
+    expect(audit.events).toEqual(
+      expect.arrayContaining([expect.objectContaining({ traceId: correlationId })])
+    );
   });
 
   it('creates once for duplicate idempotency calls and cancels the result', async () => {

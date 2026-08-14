@@ -13,6 +13,14 @@ import { loadConfig } from '@campusops/config';
 import { createDependencies, type Dependencies } from './application.js';
 import { createMcpServer } from './mcp.js';
 
+const correlationId = (value: string | string[] | undefined): string | undefined => {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return candidate &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : undefined;
+};
+
 export interface HttpRuntime {
   server: Server;
   dependencies: Dependencies;
@@ -37,7 +45,13 @@ export async function startHttpServer(options: {
       const principal = await options.verifier.verify(
         bearerToken(request.headers.authorization ?? null)
       );
-      const handler = createMcpHandler(() => createMcpServer(dependencies, principal));
+      const handler = createMcpHandler(() =>
+        createMcpServer(
+          dependencies,
+          principal,
+          correlationId(request.headers['x-campusops-correlation-id'])
+        )
+      );
       await toNodeHandler(handler)(request as unknown as NodeIncomingMessageLike, response);
     } catch (error) {
       if (!response.headersSent) {

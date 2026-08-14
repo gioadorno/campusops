@@ -36,9 +36,16 @@ const safeError = (error: unknown): CallToolResult => {
   return { content: [{ type: 'text', text: message }], isError: true };
 };
 
-const trace = (principal: Principal) => ({ principal, traceId: randomUUID() });
+const trace = (principal: Principal, propagatedTraceId?: string) => ({
+  principal,
+  traceId: propagatedTraceId ?? randomUUID()
+});
 
-export function createMcpServer(dependencies: Dependencies, principal: Principal): McpServer {
+export function createMcpServer(
+  dependencies: Dependencies,
+  principal: Principal,
+  propagatedTraceId?: string
+): McpServer {
   const application = new CampusOpsService(dependencies);
   const server = new McpServer(
     { name: 'campusops-mcp-gateway', version: '0.1.0' },
@@ -58,7 +65,7 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
       inputSchema: searchPoliciesInput,
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false }
     },
-    (input) => tool(() => application.searchPolicies(trace(principal), input))
+    (input) => tool(() => application.searchPolicies(trace(principal, propagatedTraceId), input))
   );
 
   server.registerTool(
@@ -69,7 +76,8 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
       inputSchema: getServiceStatusInput,
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false }
     },
-    ({ serviceId }) => tool(() => application.getServiceStatus(trace(principal), serviceId))
+    ({ serviceId }) =>
+      tool(() => application.getServiceStatus(trace(principal, propagatedTraceId), serviceId))
   );
 
   server.registerTool(
@@ -80,7 +88,8 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
       inputSchema: listSupportRequestsInput,
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false }
     },
-    (input) => tool(() => application.listSupportRequests(trace(principal), input))
+    (input) =>
+      tool(() => application.listSupportRequests(trace(principal, propagatedTraceId), input))
   );
 
   server.registerTool(
@@ -91,7 +100,8 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
       inputSchema: getSupportRequestInput,
       annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false }
     },
-    ({ requestId }) => tool(() => application.getSupportRequest(trace(principal), requestId))
+    ({ requestId }) =>
+      tool(() => application.getSupportRequest(trace(principal, propagatedTraceId), requestId))
   );
 
   server.registerTool(
@@ -102,7 +112,8 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
       inputSchema: createSupportRequestInput,
       annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false }
     },
-    (input) => tool(() => application.createSupportRequest(trace(principal), input))
+    (input) =>
+      tool(() => application.createSupportRequest(trace(principal, propagatedTraceId), input))
   );
 
   server.registerTool(
@@ -118,7 +129,8 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
         openWorldHint: false
       }
     },
-    ({ requestId }) => tool(() => application.cancelSupportRequest(trace(principal), requestId))
+    ({ requestId }) =>
+      tool(() => application.cancelSupportRequest(trace(principal, propagatedTraceId), requestId))
   );
 
   const resources: Array<{
@@ -131,31 +143,31 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
       name: 'policy-catalog',
       uri: 'policy://catalog',
       description: 'Fictional policy catalog metadata.',
-      read: () => application.getPolicyCatalog(trace(principal))
+      read: () => application.getPolicyCatalog(trace(principal, propagatedTraceId))
     },
     {
       name: 'security-policy-category',
       uri: 'policy://categories/security',
       description: 'Fictional security policies.',
-      read: () => application.getPoliciesByCategory(trace(principal), 'security')
+      read: () => application.getPoliciesByCategory(trace(principal, propagatedTraceId), 'security')
     },
     {
       name: 'service-catalog',
       uri: 'services://catalog',
       description: 'Fictional service catalog and current states.',
-      read: () => application.getServiceCatalog(trace(principal))
+      read: () => application.getServiceCatalog(trace(principal, propagatedTraceId))
     },
     {
       name: 'support-categories',
       uri: 'support://categories',
       description: 'Allowed fictional support request categories.',
-      read: () => application.getSupportCategories(trace(principal))
+      read: () => application.getSupportCategories(trace(principal, propagatedTraceId))
     },
     {
       name: 'platform-capabilities',
       uri: 'platform://capabilities',
       description: 'CampusOps Phase 1 MCP capabilities.',
-      read: () => application.getPlatformCapabilities(trace(principal))
+      read: () => application.getPlatformCapabilities(trace(principal, propagatedTraceId))
     }
   ];
 
@@ -188,7 +200,7 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
     async ({ requestSummary }) => {
       try {
         return await application.getPrompt(
-          trace(principal),
+          trace(principal, propagatedTraceId),
           'triage-support-request',
           ['requests:read'],
           {
@@ -218,17 +230,22 @@ export function createMcpServer(dependencies: Dependencies, principal: Principal
     },
     async ({ question }) => {
       try {
-        return await application.getPrompt(trace(principal), 'policy-answer', ['policies:read'], {
-          messages: [
-            {
-              role: 'user' as const,
-              content: {
-                type: 'text' as const,
-                text: `Answer this question only from CampusOps policy resources. Cite policy IDs, distinguish evidence from inference, and say when evidence is insufficient: ${question}`
+        return await application.getPrompt(
+          trace(principal, propagatedTraceId),
+          'policy-answer',
+          ['policies:read'],
+          {
+            messages: [
+              {
+                role: 'user' as const,
+                content: {
+                  type: 'text' as const,
+                  text: `Answer this question only from CampusOps policy resources. Cite policy IDs, distinguish evidence from inference, and say when evidence is insufficient: ${question}`
+                }
               }
-            }
-          ]
-        });
+            ]
+          }
+        );
       } catch {
         throw new Error('Prompt unavailable');
       }

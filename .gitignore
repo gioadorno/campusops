@@ -5,6 +5,7 @@ coverage/
 *.log
 *.tsbuildinfo
 dist/aws/
+.next/
 .terraform/
 *.tfstate
 *.tfstate.*

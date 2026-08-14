@@ -50,6 +50,20 @@ The command reads deployment coordinates from Terraform outputs, verifies the li
 
 PR CI never needs an AWS account or permanent test-user password.
 
+## Phase 3A authenticated AI workspace
+
+The local workspace BFF reuses the live Cognito client and MCP endpoint and invokes Bedrock with the operator's short-lived AWS profile. It creates no always-on infrastructure and uses on-demand model inference. The default model is `amazon.nova-lite-v1:0`; override `BEDROCK_MODEL_ID` with another configured Converse tool-use model when needed.
+
+```bash
+AWS_PROFILE=campusops-terraform AWS_REGION=us-west-2 pnpm dev:workspace
+```
+
+This command reads `cognito_user_pool_id`, `cognito_client_id`, `cognito_domain`, and `mcp_endpoint` from the dev Terraform state, then starts the workspace at `http://localhost:3000`. The existing Cognito client already includes `http://localhost:3000/callback` and the matching logout URL, so Phase 3A requires no Cognito replacement or Terraform change. Open the workspace, choose **Sign in with Cognito**, and complete managed login. The server creates PKCE/state material, captures the code, exchanges it without logging it, verifies both JWTs, clears the callback URL, and retains the access token only in the process-local server session.
+
+Read requests can execute automatically after MCP authorization. Creating or cancelling a support request displays a human approval card; DynamoDB cannot change until **Approve** is selected. Approval sends only the random approval ID and CSRF token. The workspace executes the exact stored proposal once through MCP, and CampusOps still enforces scope, ownership, payload validation, durable idempotency, and audit.
+
+The AWS identity used locally needs `bedrock:InvokeModel` for the configured model or inference profile. No AWS credentials are sent to browser JavaScript. Hosting the workspace, adding a dedicated runtime role, durable session/conversation storage, and Phase 3B RAG are future deployment work. Stopping the dev process clears sessions, conversations, access tokens, PKCE state, and pending approvals.
+
 ## Cleanup and cost
 
 Development uses Lambda, HTTP API, Cognito, on-demand DynamoDB, S3 state, and CloudWatch. Destroy application resources explicitly; CI never destroys them:
