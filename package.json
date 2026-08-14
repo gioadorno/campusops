@@ -11,6 +11,7 @@
     "build": "pnpm -r --if-present build",
     "dev:server": "pnpm --filter @campusops/mcp-server dev",
     "dev:workspace": "tsx scripts/dev-workspace.ts",
+    "demo:capture": "tsx scripts/capture-workspace-demo.ts",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "typecheck": "tsc -b --pretty false && pnpm --filter @campusops/workspace typecheck && tsc -p apps/mcp-server/test/tsconfig.json --pretty false && tsc -p apps/mcp-client/test/tsconfig.json --pretty false && tsc -p apps/workspace/test/tsconfig.json --pretty false && tsc -p packages/auth/test/tsconfig.json --pretty false && tsc -p packages/config/test/tsconfig.json --pretty false && tsc -p packages/aws/test/tsconfig.json --pretty false && tsc -p packages/ai/test/tsconfig.json --pretty false && tsc -p scripts/tsconfig.json --pretty false",

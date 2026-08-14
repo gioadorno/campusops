@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CampusOps governed tool flow — presentation fixture</title>
+    <link rel="stylesheet" href="../../apps/workspace/app/globals.css" />
+    <style>
+      html,
+      body {
+        width: 1440px;
+        height: 900px;
+        overflow: hidden;
+      }
+      .workspace-shell,
+      .sidebar,
+      .chat-panel,
+      .activity-panel {
+        min-height: 900px;
+        height: 900px;
+      }
+      .message-scroll {
+        padding-top: 24px;
+        padding-bottom: 20px;
+        overflow: hidden;
+      }
+      .messages {
+        gap: 15px;
+      }
+      .message p {
+        padding: 10px 13px;
+        line-height: 1.5;
+      }
+      .approval-card {
+        margin-top: 18px;
+        padding: 18px;
+      }
+      .approval-details {
+        margin: 11px 0;
+      }
+      .approval-details div {
+        padding: 8px 11px;
+      }
+      .approval-actions {
+        margin-top: 13px;
+      }
+      .activity-panel {
+        overflow: hidden;
+      }
+      .activity-list {
+        gap: 2px;
+      }
+      .activity-item {
+        padding: 8px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .demo-badge {
+        margin-left: 8px;
+        padding: 4px 7px;
+        color: #617068;
+        background: #eef3f0;
+        border-radius: 999px;
+        font-size: 8px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+      .approved-button {
+        color: #fff;
+        background: var(--green);
+        opacity: 0.72;
+      }
+      .demo-cursor {
+        position: fixed;
+        z-index: 10;
+        left: 985px;
+        top: 698px;
+        width: 18px;
+        height: 25px;
+        filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.28));
+        transform: rotate(-18deg);
+      }
+      .demo-cursor::before {
+        content: '';
+        display: block;
+        width: 0;
+        height: 0;
+        border-top: 19px solid #fff;
+        border-right: 12px solid transparent;
+        filter: drop-shadow(1px 1px 0 #13241d) drop-shadow(-1px -1px 0 #13241d);
+      }
+      body[data-step='6'] .demo-cursor {
+        left: 1048px;
+        top: 706px;
+      }
+    </style>
+  </head>
+  <body data-step="0">
+    <main class="workspace-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <strong>CampusOps</strong>
+            <span>AI Workspace</span>
+          </div>
+        </div>
+        <button class="new-chat"><span>＋</span> New conversation</button>
+        <div class="sidebar-label">CONVERSATIONS</div>
+        <button class="conversation active">
+          <span class="conversation-icon">✦</span>
+          <span><strong>Service operations</strong><small>Active now</small></span>
+        </button>
+        <div class="governance-card">
+          <div class="shield">◇</div>
+          <div>
+            <strong>Governed execution</strong>
+            <p>Reads run automatically. Changes wait for your approval.</p>
+          </div>
+        </div>
+        <div class="user-row">
+          <div class="avatar">AM</div>
+          <div class="user-copy">
+            <strong>Alex Morgan</strong>
+            <span>alex@example.test</span>
+          </div>
+          <button aria-label="Sign out">↗</button>
+        </div>
+      </aside>
+
+      <section class="chat-panel">
+        <header class="topbar">
+          <div><span class="status-dot"></span> Connected to CampusOps</div>
+          <div>
+            <span class="model-chip">Amazon Bedrock · Governed MCP</span>
+            <span class="demo-badge">DEMO</span>
+          </div>
+        </header>
+        <div class="message-scroll">
+          <section class="welcome" data-from="0" data-to="0">
+            <div class="assistant-orb">✦</div>
+            <p class="eyebrow">CAMPUSOPS ASSISTANT</p>
+            <h2>What can I help you operate today?</h2>
+            <p>
+              Check services, search fictional policies, and manage support requests—with approval
+              before anything changes.
+            </p>
+          </section>
+
+          <div class="messages" data-from="1">
+            <article class="message user" data-from="1">
+              <div class="message-avatar">AM</div>
+              <div>
+                <span class="message-author">You</span>
+                <p>Are any services currently having problems?</p>
+              </div>
+            </article>
+            <article class="message assistant" data-from="2" data-to="2">
+              <div class="message-avatar">✦</div>
+              <div class="thinking"><span></span><span></span><span></span></div>
+            </article>
+            <article class="message assistant" data-from="3">
+              <div class="message-avatar">✦</div>
+              <div>
+                <span class="message-author">CampusOps</span>
+                <p>
+                  Learning Hub is operational. Campus Wi-Fi is degraded with intermittent
+                  connectivity in West Commons.
+                </p>
+              </div>
+            </article>
+            <article class="message user" data-from="4">
+              <div class="message-avatar">AM</div>
+              <div>
+                <span class="message-author">You</span>
+                <p>Create a support request because Campus Wi-Fi is degraded.</p>
+              </div>
+            </article>
+            <article class="message assistant" data-from="6" data-to="6">
+              <div class="message-avatar">✦</div>
+              <div class="thinking"><span></span><span></span><span></span></div>
+            </article>
+            <article class="message assistant" data-from="7">
+              <div class="message-avatar">✦</div>
+              <div>
+                <span class="message-author">CampusOps</span>
+                <p>
+                  Your support request for the Campus Wi-Fi connectivity issue was created
+                  successfully with high severity.
+                </p>
+              </div>
+            </article>
+          </div>
+
+          <section class="approval-card" data-from="5" data-to="6">
+            <div class="approval-heading">
+              <div class="approval-icon">!</div>
+              <div>
+                <span>HUMAN APPROVAL REQUIRED</span>
+                <h3>CampusOps wants to create a support request</h3>
+              </div>
+            </div>
+            <p>Create “Campus Wi-Fi connectivity issue” in Network.</p>
+            <div class="approval-details">
+              <div><span>Category</span><strong>Network</strong></div>
+              <div><span>Title</span><strong>Campus Wi-Fi connectivity issue</strong></div>
+              <div>
+                <span>Description</span><strong>Intermittent connectivity in West Commons</strong>
+              </div>
+              <div><span>Severity</span><strong>High</strong></div>
+            </div>
+            <div class="change-note">
+              <span>◇</span> A new support request will be created for your signed-in account.
+            </div>
+            <div class="approval-actions">
+              <button class="secondary-button" data-to="5">Cancel</button>
+              <button class="primary-button" data-to="5">
+                Approve &amp; execute <span>→</span>
+              </button>
+              <button class="primary-button approved-button" data-from="6">
+                Approved · executing…
+              </button>
+            </div>
+          </section>
+        </div>
+        <div class="composer">
+          <div class="composer-box">
+            <textarea
+              aria-label="Message CampusOps"
+              placeholder="Ask CampusOps about services, policies, or support…"
+              rows="1"
+              disabled
+            ></textarea>
+            <button disabled>↑</button>
+          </div>
+          <p>The model proposes actions. CampusOps authorizes and executes them.</p>
+        </div>
+      </section>
+
+      <aside class="activity-panel">
+        <div class="activity-header">
+          <div>
+            <p class="eyebrow">SAFE TRACE</p>
+            <h2>Activity</h2>
+          </div>
+          <span class="live-pill">● LIVE</span>
+        </div>
+        <p class="activity-intro">
+          Safe execution events for this conversation. Sensitive payloads are never shown.
+        </p>
+        <div class="activity-list">
+          <div class="empty-activity" data-from="0" data-to="0">
+            <span>◇</span>
+            <p>Tool and approval activity will appear here.</p>
+          </div>
+          <div class="activity-item success" data-from="7">
+            <div class="activity-symbol">↗</div>
+            <div><strong>create_support_request completed</strong><span>10:43 AM</span></div>
+          </div>
+          <div class="activity-item success" data-from="6">
+            <div class="activity-symbol">◆</div>
+            <div><strong>Human approval accepted</strong><span>10:43 AM</span></div>
+          </div>
+          <div class="activity-item warning" data-from="5">
+            <div class="activity-symbol">◆</div>
+            <div><strong>Explicit human approval required</strong><span>10:43 AM</span></div>
+          </div>
+          <div class="activity-item success" data-from="5">
+            <div class="activity-symbol">✓</div>
+            <div><strong>Tool eligibility checked</strong><span>10:43 AM</span></div>
+          </div>
+          <div class="activity-item" data-from="4">
+            <div class="activity-symbol">✦</div>
+            <div><strong>create_support_request requested</strong><span>10:43 AM</span></div>
+          </div>
+          <div class="activity-item success" data-from="3">
+            <div class="activity-symbol">↗</div>
+            <div><strong>Service status tools completed</strong><span>10:42 AM</span></div>
+          </div>
+          <div class="activity-item success" data-from="2">
+            <div class="activity-symbol">✓</div>
+            <div><strong>Tool eligibility checked</strong><span>10:42 AM</span></div>
+          </div>
+          <div class="activity-item" data-from="2">
+            <div class="activity-symbol">✦</div>
+            <div><strong>Read-only status tools requested</strong><span>10:42 AM</span></div>
+          </div>
+        </div>
+        <div class="boundary">
+          <span class="boundary-icon">◇</span>
+          <div>
+            <strong>Security boundary</strong>
+            <p>Identity, scopes, ownership, and validation are enforced again by CampusOps MCP.</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+    <div class="demo-cursor" data-from="5" data-to="6" aria-hidden="true"></div>
+    <script>
+      const step = Number(new URLSearchParams(window.location.search).get('step') ?? '0');
+      document.body.dataset.step = String(step);
+      for (const element of document.querySelectorAll('[data-from], [data-to]')) {
+        const from = Number(element.getAttribute('data-from') ?? '0');
+        const to = Number(element.getAttribute('data-to') ?? '7');
+        element.hidden = step < from || step > to;
+      }
+    </script>
+  </body>
+</html>

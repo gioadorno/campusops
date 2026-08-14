@@ -107,6 +107,16 @@ Build the deterministic Lambda artifact with `pnpm build:lambda`; that command b
 
 The model proposes actions. CampusOps authorizes and executes them. The browser signs in through the existing public Cognito client using Authorization Code + PKCE, but receives only opaque, HttpOnly workspace cookies. OAuth state, PKCE verifier, access token, conversation state, and approval proposals remain server-side and in memory. SameSite cookies plus a per-session CSRF token protect state-changing workspace routes; token expiry invalidates the session.
 
+### Governed AI Workspace
+
+![CampusOps AI Workspace](docs/demo/campusops-workspace.png)
+
+The model may request actions, but CampusOps controls authorization and execution. Read-only operations can run after authorization; state-changing operations require explicit human approval.
+
+![CampusOps governed tool flow](docs/demo/campusops-governed-tool-flow.gif)
+
+[Watch the longer MP4 demonstration](docs/demo/campusops-governed-tool-flow.mp4). The public media uses a deterministic presentation fixture with fictional identity and operations; it does not contain a live login, token, AWS identifier, or production payload. See [demo capture notes](docs/demo/README.md).
+
 The workspace server invokes Amazon Bedrock Converse through a provider boundary and exposes only MCP tools allowed by the token's mapped scopes. Tool definitions are translated from the existing Zod contracts. Read-only tools execute automatically through the authenticated MCP client. State-changing operations require explicit human approval in the workspace:
 
 | Policy                                  | Tools                                                                                   |
