@@ -36,7 +36,6 @@ module "lambda" {
   artifact_path = var.lambda_artifact_path
   environment = {
     CAMPUSOPS_RUNTIME          = "aws"
-    AWS_REGION                 = var.aws_region
     CAMPUSOPS_TABLE_NAME       = module.operational.name
     CAMPUSOPS_AUDIT_TABLE_NAME = module.audit.name
     COGNITO_USER_POOL_ID       = module.cognito.user_pool_id

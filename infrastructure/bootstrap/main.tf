@@ -127,10 +127,13 @@ resource "aws_iam_role_policy" "github_deploy" {
         Resource = ["arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.application_name}-*"]
       },
       {
-        Sid      = "ManageCampusOpsApiGateway"
-        Effect   = "Allow"
-        Action   = ["apigateway:GET", "apigateway:POST", "apigateway:PATCH", "apigateway:DELETE"]
-        Resource = ["arn:aws:apigateway:${var.aws_region}::/apis*"]
+        Sid    = "ManageCampusOpsApiGateway"
+        Effect = "Allow"
+        Action = ["apigateway:GET", "apigateway:POST", "apigateway:PATCH", "apigateway:DELETE"]
+        Resource = [
+          "arn:aws:apigateway:${var.aws_region}::/apis*",
+          "arn:aws:apigateway:${var.aws_region}::/tags/*"
+        ]
       },
       {
         Sid      = "ManageCampusOpsLogGroup"
