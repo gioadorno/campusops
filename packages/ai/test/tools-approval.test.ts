@@ -97,8 +97,23 @@ describe('single-use approval store', () => {
   it('is user/session-bound and single-use', () => {
     const store = new InMemoryApprovalStore();
     const approval = store.create(proposal);
+    expect(() => store.validatePending(approval.id, 'other-user', proposal.sessionId)).toThrow(
+      ApprovalError
+    );
+    expect(() => store.reject(approval.id, 'other-user', proposal.sessionId)).toThrow(
+      ApprovalError
+    );
     expect(() => store.claim(approval.id, 'other-user', proposal.sessionId)).toThrow(ApprovalError);
+    expect(() => store.validatePending(approval.id, proposal.userId, 'other-session')).toThrow(
+      ApprovalError
+    );
+    expect(() => store.reject(approval.id, proposal.userId, 'other-session')).toThrow(
+      ApprovalError
+    );
     expect(() => store.claim(approval.id, proposal.userId, 'other-session')).toThrow(ApprovalError);
+    expect(store.validatePending(approval.id, proposal.userId, proposal.sessionId).status).toBe(
+      'pending'
+    );
     expect(store.claim(approval.id, proposal.userId, proposal.sessionId).args).toEqual(
       proposal.args
     );
@@ -106,7 +121,9 @@ describe('single-use approval store', () => {
       ApprovalError
     );
     store.finish(approval.id, 'completed');
-    expect(store.inspect(approval.id)?.status).toBe('completed');
+    expect(() => store.validatePending(approval.id, proposal.userId, proposal.sessionId)).toThrow(
+      ApprovalError
+    );
   });
 
   it('expires and rejects approvals without allowing later execution', () => {
@@ -115,6 +132,12 @@ describe('single-use approval store', () => {
     const expired = store.create(proposal);
     now = 1_501;
     expect(() => store.claim(expired.id, proposal.userId, proposal.sessionId)).toThrow(
+      ApprovalError
+    );
+    expect(() => store.validatePending(expired.id, proposal.userId, proposal.sessionId)).toThrow(
+      ApprovalError
+    );
+    expect(() => store.reject(expired.id, proposal.userId, proposal.sessionId)).toThrow(
       ApprovalError
     );
 

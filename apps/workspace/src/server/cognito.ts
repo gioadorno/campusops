@@ -21,8 +21,21 @@ const accessClaimsSchema = z.object({
 
 const idClaimsSchema = z.object({
   sub: z.string().min(1),
+  token_use: z.literal('id'),
   email: z.string().email().optional()
 });
+
+export const validateCognitoClaims = (
+  accessPayload: unknown,
+  idPayload: unknown,
+  expectedClientId: string
+) => {
+  const access = accessClaimsSchema.parse(accessPayload);
+  if (access.client_id !== expectedClientId) throw new Error('Unexpected Cognito client');
+  const identity = idClaimsSchema.parse(idPayload);
+  if (identity.sub !== access.sub) throw new Error('Cognito token subject mismatch');
+  return { access, identity };
+};
 
 export interface CognitoIdentity {
   userId: string;
@@ -90,25 +103,22 @@ export class CognitoOAuthClient {
     }
     const tokens = tokenResponseSchema.parse(await response.json());
     try {
-      const access = accessClaimsSchema.parse(
-        (
-          await jwtVerify(tokens.access_token, this.jwks, {
-            issuer: this.config.cognitoIssuer
-          })
-        ).payload
+      const accessPayload = (
+        await jwtVerify(tokens.access_token, this.jwks, {
+          issuer: this.config.cognitoIssuer
+        })
+      ).payload;
+      const idPayload = (
+        await jwtVerify(tokens.id_token, this.jwks, {
+          issuer: this.config.cognitoIssuer,
+          audience: this.config.COGNITO_CLIENT_ID
+        })
+      ).payload;
+      const { access, identity } = validateCognitoClaims(
+        accessPayload,
+        idPayload,
+        this.config.COGNITO_CLIENT_ID
       );
-      if (access.client_id !== this.config.COGNITO_CLIENT_ID) {
-        throw new Error('Unexpected Cognito client');
-      }
-      const identity = idClaimsSchema.parse(
-        (
-          await jwtVerify(tokens.id_token, this.jwks, {
-            issuer: this.config.cognitoIssuer,
-            audience: this.config.COGNITO_CLIENT_ID
-          })
-        ).payload
-      );
-      if (identity.sub !== access.sub) throw new Error('Cognito token subject mismatch');
       return {
         userId: access.sub,
         displayName: identity.email ?? access.username ?? 'CampusOps user',

@@ -102,6 +102,10 @@ export class InMemoryApprovalStore {
     return publicView(approval);
   }
 
+  validatePending(id: string, userId: string, sessionId: string): PendingApproval {
+    return structuredClone(this.boundPending(id, userId, sessionId));
+  }
+
   claim(id: string, userId: string, sessionId: string): PendingApproval {
     const approval = this.boundPending(id, userId, sessionId);
     approval.status = 'executing';
@@ -118,11 +122,6 @@ export class InMemoryApprovalStore {
     const approval = this.approvals.get(id);
     if (!approval || approval.status !== 'executing') throw new ApprovalError();
     approval.status = status;
-  }
-
-  inspect(id: string): PendingApproval | undefined {
-    const approval = this.approvals.get(id);
-    return approval ? structuredClone(approval) : undefined;
   }
 
   private boundPending(id: string, userId: string, sessionId: string): PendingApproval {

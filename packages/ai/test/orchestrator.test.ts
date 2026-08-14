@@ -55,15 +55,16 @@ const createHarness = (responses: ModelResponse[]) => {
   const model = new QueueModel(responses);
   const executor = new RecordingExecutor();
   const approvals = new InMemoryApprovalStore();
+  const conversations = new InMemoryConversationStore();
   const diagnostics = new InMemoryDiagnosticSink();
   const orchestrator = new CampusOpsOrchestrator(
     model,
     executor,
-    new InMemoryConversationStore(),
+    conversations,
     approvals,
     diagnostics
   );
-  return { model, executor, approvals, diagnostics, orchestrator };
+  return { model, executor, approvals, conversations, diagnostics, orchestrator };
 };
 
 describe('governed model tool orchestration', () => {
@@ -195,6 +196,64 @@ describe('governed model tool orchestration', () => {
     expect(rejected.assistantText).toBe('Cancelled. No changes were made to CampusOps.');
     expect(harness.executor.calls).toHaveLength(0);
     expect(harness.model.requests).toHaveLength(1);
+  });
+
+  it('does not consume an approval when the conversation pending ID mismatches', async () => {
+    const harness = createHarness([
+      tool('create_support_request', {
+        category: 'network',
+        title: 'VPN unavailable',
+        description: 'I cannot connect to the VPN.',
+        severity: 'high'
+      }),
+      text('Your support request was created successfully.')
+    ]);
+    const pending = await harness.orchestrator.chat(context, 'Create a VPN support request');
+    const conversation = harness.conversations.get(
+      pending.conversationId,
+      context.userId,
+      context.sessionId
+    );
+    conversation.pendingApprovalId = 'stale-approval-id';
+    harness.conversations.save(conversation);
+
+    await expect(harness.orchestrator.approve(context, pending.approval!.id)).rejects.toThrow(
+      ApprovalError
+    );
+    expect(harness.executor.calls).toHaveLength(0);
+    expect(
+      harness.approvals.validatePending(pending.approval!.id, context.userId, context.sessionId)
+        .status
+    ).toBe('pending');
+
+    conversation.pendingApprovalId = pending.approval!.id;
+    harness.conversations.save(conversation);
+    await harness.orchestrator.approve(context, pending.approval!.id);
+    expect(harness.executor.calls).toHaveLength(1);
+  });
+
+  it('does not reject an approval when the conversation pending ID mismatches', async () => {
+    const harness = createHarness([tool('cancel_support_request', { requestId: 'req-alex-001' })]);
+    const pending = await harness.orchestrator.chat(context, 'Cancel my request');
+    const conversation = harness.conversations.get(
+      pending.conversationId,
+      context.userId,
+      context.sessionId
+    );
+    conversation.pendingApprovalId = 'stale-approval-id';
+    harness.conversations.save(conversation);
+
+    expect(() => harness.orchestrator.reject(context, pending.approval!.id)).toThrow(ApprovalError);
+    expect(
+      harness.approvals.validatePending(pending.approval!.id, context.userId, context.sessionId)
+        .status
+    ).toBe('pending');
+
+    conversation.pendingApprovalId = pending.approval!.id;
+    harness.conversations.save(conversation);
+    const rejected = await harness.orchestrator.reject(context, pending.approval!.id);
+    expect(rejected.assistantText).toContain('No changes');
+    expect(harness.executor.calls).toHaveLength(0);
   });
 
   it('blocks malformed and unknown model requests without calling MCP', async () => {
