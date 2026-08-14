@@ -6,7 +6,7 @@
 - Application authorization: a fixed mapping converts `campusops/*.read|write` OAuth scopes to the existing colon-delimited scopes; unsupported scopes are ignored. `CampusOpsService` enforces each operation.
 - Ownership: Cognito `sub` is the user ID. No MCP argument can supply it. Cross-user and missing records remain externally indistinguishable.
 - Runtime permissions: the Lambda role can read/write only the operational table and its GSI, write only the audit table, and write its known log group.
-- Deployment permissions: a separate GitHub OIDC role is trusted only for `repo:gioadorno/campusops:environment:dev`. It cannot be assumed with long-lived AWS keys from this workflow.
+- Deployment permissions: a separate GitHub OIDC role is trusted only for `repo:gioadorno@85190258/campusops@1333443047:environment:dev`. Including immutable GitHub owner and repository IDs prevents name reuse after a rename or transfer from inheriting deployment trust. It cannot be assumed with long-lived AWS keys from this workflow.
 
 ## Bootstrap and deployment boundary
 

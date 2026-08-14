@@ -17,7 +17,8 @@
     "test:contract": "vitest run apps/mcp-client/test/contract.test.ts",
     "build:lambda": "pnpm build && tsx scripts/build-lambda.ts",
     "seed:aws": "pnpm --filter @campusops/mcp-server seed:aws",
-    "smoke:aws": "tsx scripts/smoke-aws.ts"
+    "smoke:aws": "tsx scripts/smoke-aws.ts",
+    "smoke:aws:auth": "tsx scripts/auth-smoke-aws.ts"
   },
   "devDependencies": {
     "@aws-sdk/lib-dynamodb": "^3.864.0",
