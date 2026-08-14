@@ -27,6 +27,9 @@
       .messages {
         gap: 15px;
       }
+      .message {
+        animation: message-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
       .message p {
         padding: 10px 13px;
         line-height: 1.5;
@@ -34,6 +37,13 @@
       .approval-card {
         margin-top: 18px;
         padding: 18px;
+        transform-origin: 70% 100%;
+      }
+      .approval-card.entering {
+        animation: approval-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .approval-card.resolving {
+        animation: approval-out 420ms ease-in both;
       }
       .approval-details {
         margin: 11px 0;
@@ -52,6 +62,13 @@
       }
       .activity-item {
         padding: 8px;
+        animation: activity-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        transition: background 240ms ease;
+      }
+      .activity-item.running .activity-symbol {
+        color: #466357;
+        background: #edf4f0;
+        animation: activity-pulse 900ms ease-in-out infinite;
       }
       [hidden] {
         display: none !important;
@@ -66,20 +83,68 @@
         font-weight: 800;
         letter-spacing: 0.08em;
       }
+      .live-pill {
+        animation: demo-pulse 1.8s ease-in-out infinite;
+      }
+      .composer-box.demo-focus {
+        border-color: #6ea48d;
+        box-shadow:
+          0 0 0 3px rgba(31, 107, 79, 0.1),
+          0 10px 30px rgba(26, 60, 45, 0.09);
+      }
+      .composer-box button {
+        position: relative;
+        overflow: hidden;
+        transition: 180ms ease;
+      }
+      .composer-box button.demo-hover,
+      .approval-actions button.demo-hover {
+        background: var(--green-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(18, 75, 55, 0.25);
+      }
+      .composer-box button.demo-click,
+      .approval-actions button.demo-click {
+        transform: scale(0.94);
+      }
       .approved-button {
+        min-width: 155px;
         color: #fff;
         background: var(--green);
-        opacity: 0.72;
+      }
+      .approved-button::before {
+        content: '';
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        margin-right: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.45);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 700ms linear infinite;
+      }
+      .click-ripple {
+        position: absolute;
+        inset: 50% auto auto 50%;
+        width: 12px;
+        height: 12px;
+        margin: -6px;
+        pointer-events: none;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        animation: ripple 520ms ease-out both;
       }
       .demo-cursor {
         position: fixed;
-        z-index: 10;
-        left: 985px;
-        top: 698px;
+        z-index: 20;
+        left: 0;
+        top: 0;
         width: 18px;
         height: 25px;
+        pointer-events: none;
         filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.28));
-        transform: rotate(-18deg);
+        transform: translate(1390px, 500px) rotate(-18deg);
+        will-change: transform;
       }
       .demo-cursor::before {
         content: '';
@@ -90,21 +155,63 @@
         border-right: 12px solid transparent;
         filter: drop-shadow(1px 1px 0 #13241d) drop-shadow(-1px -1px 0 #13241d);
       }
-      body[data-step='6'] .demo-cursor {
-        left: 1048px;
-        top: 706px;
+      .demo-cursor.clicking {
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.22));
+      }
+      @keyframes message-in {
+        from {
+          opacity: 0;
+          transform: translateY(9px);
+        }
+      }
+      @keyframes activity-in {
+        from {
+          opacity: 0;
+          transform: translateX(12px);
+        }
+      }
+      @keyframes approval-in {
+        from {
+          opacity: 0;
+          transform: translateY(24px) scale(0.975);
+        }
+      }
+      @keyframes approval-out {
+        to {
+          opacity: 0;
+          transform: translateY(-12px) scale(0.985);
+        }
+      }
+      @keyframes activity-pulse {
+        50% {
+          transform: scale(1.08);
+          box-shadow: 0 0 0 5px rgba(31, 107, 79, 0.07);
+        }
+      }
+      @keyframes demo-pulse {
+        50% {
+          box-shadow: 0 0 0 4px rgba(31, 107, 79, 0.06);
+        }
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes ripple {
+        to {
+          opacity: 0;
+          transform: scale(7);
+        }
       }
     </style>
   </head>
-  <body data-step="0">
+  <body>
     <main class="workspace-shell">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">C</div>
-          <div>
-            <strong>CampusOps</strong>
-            <span>AI Workspace</span>
-          </div>
+          <div><strong>CampusOps</strong><span>AI Workspace</span></div>
         </div>
         <button class="new-chat"><span>＋</span> New conversation</button>
         <div class="sidebar-label">CONVERSATIONS</div>
@@ -121,24 +228,21 @@
         </div>
         <div class="user-row">
           <div class="avatar">AM</div>
-          <div class="user-copy">
-            <strong>Alex Morgan</strong>
-            <span>alex@example.test</span>
-          </div>
+          <div class="user-copy"><strong>Alex Morgan</strong><span>alex@example.test</span></div>
           <button aria-label="Sign out">↗</button>
         </div>
       </aside>
 
       <section class="chat-panel">
         <header class="topbar">
-          <div><span class="status-dot"></span> Connected to CampusOps</div>
+          <div><span class="status-dot"></span> Deterministic demo session</div>
           <div>
-            <span class="model-chip">Amazon Bedrock · Governed MCP</span>
+            <span class="model-chip">Governed MCP workflow</span>
             <span class="demo-badge">DEMO</span>
           </div>
         </header>
-        <div class="message-scroll">
-          <section class="welcome" data-from="0" data-to="0">
+        <div class="message-scroll" id="message-scroll">
+          <section class="welcome" id="welcome">
             <div class="assistant-orb">✦</div>
             <p class="eyebrow">CAMPUSOPS ASSISTANT</p>
             <h2>What can I help you operate today?</h2>
@@ -147,53 +251,9 @@
               before anything changes.
             </p>
           </section>
+          <div class="messages" id="messages" hidden></div>
 
-          <div class="messages" data-from="1">
-            <article class="message user" data-from="1">
-              <div class="message-avatar">AM</div>
-              <div>
-                <span class="message-author">You</span>
-                <p>Are any services currently having problems?</p>
-              </div>
-            </article>
-            <article class="message assistant" data-from="2" data-to="2">
-              <div class="message-avatar">✦</div>
-              <div class="thinking"><span></span><span></span><span></span></div>
-            </article>
-            <article class="message assistant" data-from="3">
-              <div class="message-avatar">✦</div>
-              <div>
-                <span class="message-author">CampusOps</span>
-                <p>
-                  Learning Hub is operational. Campus Wi-Fi is degraded with intermittent
-                  connectivity in West Commons.
-                </p>
-              </div>
-            </article>
-            <article class="message user" data-from="4">
-              <div class="message-avatar">AM</div>
-              <div>
-                <span class="message-author">You</span>
-                <p>Create a support request because Campus Wi-Fi is degraded.</p>
-              </div>
-            </article>
-            <article class="message assistant" data-from="6" data-to="6">
-              <div class="message-avatar">✦</div>
-              <div class="thinking"><span></span><span></span><span></span></div>
-            </article>
-            <article class="message assistant" data-from="7">
-              <div class="message-avatar">✦</div>
-              <div>
-                <span class="message-author">CampusOps</span>
-                <p>
-                  Your support request for the Campus Wi-Fi connectivity issue was created
-                  successfully with high severity.
-                </p>
-              </div>
-            </article>
-          </div>
-
-          <section class="approval-card" data-from="5" data-to="6">
+          <section class="approval-card" id="approval" hidden>
             <div class="approval-heading">
               <div class="approval-icon">!</div>
               <div>
@@ -214,25 +274,22 @@
               <span>◇</span> A new support request will be created for your signed-in account.
             </div>
             <div class="approval-actions">
-              <button class="secondary-button" data-to="5">Cancel</button>
-              <button class="primary-button" data-to="5">
+              <button class="secondary-button" id="cancel-button">Cancel</button>
+              <button class="primary-button" id="approve-button">
                 Approve &amp; execute <span>→</span>
-              </button>
-              <button class="primary-button approved-button" data-from="6">
-                Approved · executing…
               </button>
             </div>
           </section>
         </div>
         <div class="composer">
-          <div class="composer-box">
+          <div class="composer-box" id="composer-box">
             <textarea
+              id="composer-input"
               aria-label="Message CampusOps"
               placeholder="Ask CampusOps about services, policies, or support…"
               rows="1"
-              disabled
             ></textarea>
-            <button disabled>↑</button>
+            <button id="send-button" disabled>↑</button>
           </div>
           <p>The model proposes actions. CampusOps authorizes and executes them.</p>
         </div>
@@ -247,44 +304,12 @@
           <span class="live-pill">● DEMO</span>
         </div>
         <p class="activity-intro">
-          Safe execution events for this conversation. Sensitive payloads are never shown.
+          Simulated safe execution events. Sensitive payloads are never shown.
         </p>
-        <div class="activity-list">
-          <div class="empty-activity" data-from="0" data-to="0">
+        <div class="activity-list" id="activity-list">
+          <div class="empty-activity" id="empty-activity">
             <span>◇</span>
             <p>Tool and approval activity will appear here.</p>
-          </div>
-          <div class="activity-item success" data-from="7">
-            <div class="activity-symbol">↗</div>
-            <div><strong>create_support_request completed</strong><span>10:43 AM</span></div>
-          </div>
-          <div class="activity-item success" data-from="6">
-            <div class="activity-symbol">◆</div>
-            <div><strong>Human approval accepted</strong><span>10:43 AM</span></div>
-          </div>
-          <div class="activity-item warning" data-from="5">
-            <div class="activity-symbol">◆</div>
-            <div><strong>Explicit human approval required</strong><span>10:43 AM</span></div>
-          </div>
-          <div class="activity-item success" data-from="5">
-            <div class="activity-symbol">✓</div>
-            <div><strong>Tool eligibility checked</strong><span>10:43 AM</span></div>
-          </div>
-          <div class="activity-item" data-from="4">
-            <div class="activity-symbol">✦</div>
-            <div><strong>create_support_request requested</strong><span>10:43 AM</span></div>
-          </div>
-          <div class="activity-item success" data-from="3">
-            <div class="activity-symbol">↗</div>
-            <div><strong>Service status tools completed</strong><span>10:42 AM</span></div>
-          </div>
-          <div class="activity-item success" data-from="2">
-            <div class="activity-symbol">✓</div>
-            <div><strong>Tool eligibility checked</strong><span>10:42 AM</span></div>
-          </div>
-          <div class="activity-item" data-from="2">
-            <div class="activity-symbol">✦</div>
-            <div><strong>Read-only status tools requested</strong><span>10:42 AM</span></div>
           </div>
         </div>
         <div class="boundary">
@@ -296,14 +321,209 @@
         </div>
       </aside>
     </main>
-    <div class="demo-cursor" data-from="5" data-to="6" aria-hidden="true"></div>
+    <div class="demo-cursor" id="demo-cursor" aria-hidden="true"></div>
+
     <script>
-      const step = Number(new URLSearchParams(window.location.search).get('step') ?? '0');
-      document.body.dataset.step = String(step);
-      for (const element of document.querySelectorAll('[data-from], [data-to]')) {
-        const from = Number(element.getAttribute('data-from') ?? '0');
-        const to = Number(element.getAttribute('data-to') ?? '7');
-        element.hidden = step < from || step > to;
+      const elements = {
+        activityList: document.querySelector('#activity-list'),
+        approval: document.querySelector('#approval'),
+        approveButton: document.querySelector('#approve-button'),
+        cancelButton: document.querySelector('#cancel-button'),
+        composerBox: document.querySelector('#composer-box'),
+        cursor: document.querySelector('#demo-cursor'),
+        emptyActivity: document.querySelector('#empty-activity'),
+        input: document.querySelector('#composer-input'),
+        messages: document.querySelector('#messages'),
+        messageScroll: document.querySelector('#message-scroll'),
+        sendButton: document.querySelector('#send-button'),
+        welcome: document.querySelector('#welcome')
+      };
+      const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+      const typingCadence = [43, 51, 38, 57, 46, 54, 41, 49];
+      let cursorPosition = { x: 1390, y: 500 };
+      let activitySequence = 0;
+
+      const moveCursor = async (x, y, duration = 760) => {
+        const animation = elements.cursor.animate(
+          [
+            { transform: `translate(${cursorPosition.x}px, ${cursorPosition.y}px) rotate(-18deg)` },
+            { transform: `translate(${x}px, ${y}px) rotate(-18deg)` }
+          ],
+          { duration, easing: 'cubic-bezier(0.22, 0.72, 0.18, 1)', fill: 'forwards' }
+        );
+        await animation.finished;
+        cursorPosition = { x, y };
+      };
+
+      const click = async (button) => {
+        button.classList.add('demo-hover');
+        await wait(220);
+        button.classList.add('demo-click');
+        elements.cursor.classList.add('clicking');
+        const ripple = document.createElement('span');
+        ripple.className = 'click-ripple';
+        button.append(ripple);
+        await wait(150);
+        button.classList.remove('demo-click');
+        elements.cursor.classList.remove('clicking');
+        await wait(220);
+        button.classList.remove('demo-hover');
+        ripple.remove();
+      };
+
+      const typeIntoComposer = async (text) => {
+        elements.composerBox.classList.add('demo-focus');
+        elements.input.value = '';
+        for (let index = 0; index < text.length; index += 1) {
+          elements.input.value += text[index];
+          elements.sendButton.disabled = false;
+          await wait(typingCadence[index % typingCadence.length]);
+        }
+      };
+
+      const message = (role, text = '') => {
+        elements.welcome.hidden = true;
+        elements.messages.hidden = false;
+        const article = document.createElement('article');
+        article.className = `message ${role}`;
+        article.innerHTML = `
+          <div class="message-avatar">${role === 'assistant' ? '✦' : 'AM'}</div>
+          <div>
+            <span class="message-author">${role === 'assistant' ? 'CampusOps' : 'You'}</span>
+            <p></p>
+          </div>`;
+        article.querySelector('p').textContent = text;
+        elements.messages.append(article);
+        return article.querySelector('p');
+      };
+
+      const thinking = () => {
+        const article = document.createElement('article');
+        article.className = 'message assistant';
+        article.innerHTML = `
+          <div class="message-avatar">✦</div>
+          <div class="thinking"><span></span><span></span><span></span></div>`;
+        elements.messages.append(article);
+        return article;
+      };
+
+      const typeAssistant = async (text) => {
+        const paragraph = message('assistant');
+        for (let index = 0; index < text.length; index += 1) {
+          paragraph.textContent += text[index];
+          await wait(20 + (index % 4) * 2);
+        }
+      };
+
+      const addActivity = (label, status = 'info', symbol = '✦') => {
+        elements.emptyActivity?.remove();
+        const item = document.createElement('div');
+        const id = `activity-${activitySequence++}`;
+        item.id = id;
+        item.className = `activity-item ${status}`;
+        item.innerHTML = `<div class="activity-symbol">${symbol}</div><div><strong></strong><span>DEMO</span></div>`;
+        item.querySelector('strong').textContent = label;
+        elements.activityList.prepend(item);
+        while (elements.activityList.children.length > 8) {
+          elements.activityList.lastElementChild.remove();
+        }
+        return id;
+      };
+
+      const completeActivity = (id, label) => {
+        const item = document.querySelector(`#${id}`);
+        item.className = 'activity-item success';
+        item.querySelector('.activity-symbol').textContent = '↗';
+        item.querySelector('strong').textContent = label;
+      };
+
+      const submitComposer = async () => {
+        await moveCursor(1025, 831, 520);
+        await click(elements.sendButton);
+        message('user', elements.input.value);
+        elements.input.value = '';
+        elements.input.disabled = true;
+        elements.sendButton.disabled = true;
+        elements.composerBox.classList.remove('demo-focus');
+      };
+
+      window.startDemo = async () => {
+        if (window.__demoStarted) return;
+        window.__demoStarted = true;
+        await wait(650);
+        await moveCursor(660, 828, 920);
+        await typeIntoComposer('Are any services currently having problems?');
+        await submitComposer();
+
+        let loading = thinking();
+        await wait(220);
+        addActivity('Model response requested', 'info', '✦');
+        await wait(420);
+        addActivity('Read-only status tools requested', 'info', '✦');
+        await wait(430);
+        addActivity('Tool eligibility checked', 'success', '✓');
+        await wait(450);
+        const readTool = addActivity('get_service_status running', 'running', '↗');
+        await wait(820);
+        completeActivity(readTool, 'Service status tools completed');
+        await wait(250);
+        loading.remove();
+        await typeAssistant(
+          'Learning Hub is operational. Campus Wi-Fi is degraded with intermittent connectivity in West Commons.'
+        );
+
+        await wait(380);
+        elements.input.disabled = false;
+        await moveCursor(650, 828, 720);
+        await typeIntoComposer('Create a support request because Campus Wi-Fi is degraded.');
+        await submitComposer();
+
+        loading = thinking();
+        await wait(250);
+        addActivity('Model response requested', 'info', '✦');
+        await wait(390);
+        addActivity('create_support_request requested', 'info', '✦');
+        await wait(430);
+        addActivity('Tool eligibility checked', 'success', '✓');
+        await wait(500);
+        addActivity('Explicit human approval required', 'warning', '◆');
+        await wait(300);
+        loading.remove();
+        elements.approval.hidden = false;
+        elements.approval.classList.add('entering');
+        window.__demoPhase = 'approval';
+        await wait(3100);
+
+        await moveCursor(936, 646, 1200);
+        elements.approveButton.classList.add('demo-hover');
+        await wait(500);
+        await click(elements.approveButton);
+        elements.approveButton.classList.remove('demo-hover');
+        elements.approveButton.disabled = true;
+        elements.cancelButton.disabled = true;
+        elements.approveButton.className = 'primary-button approved-button';
+        elements.approveButton.textContent = 'Approved · executing…';
+        addActivity('Human approval accepted', 'success', '◆');
+        await wait(400);
+        const writeTool = addActivity('create_support_request executing', 'running', '↗');
+        await wait(2100);
+        completeActivity(writeTool, 'create_support_request completed');
+        await wait(350);
+        elements.approval.classList.remove('entering');
+        elements.approval.classList.add('resolving');
+        await wait(430);
+        elements.approval.hidden = true;
+        elements.input.disabled = false;
+        await typeAssistant(
+          'Your support request for the Campus Wi-Fi connectivity issue was created successfully with high severity.'
+        );
+        window.__demoPhase = 'complete';
+        await wait(3000);
+        window.__demoComplete = true;
+      };
+
+      if (new URLSearchParams(window.location.search).get('autoplay') === '1') {
+        setTimeout(() => void window.startDemo(), 500);
       }
     </script>
   </body>
