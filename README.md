@@ -1,6 +1,6 @@
 # CampusOps MCP Gateway
 
-CampusOps MCP Gateway is a fictional enterprise Model Context Protocol (MCP) platform. Phase 1 established the local secure MCP foundation. Phase 2 adds an AWS serverless production foundation while preserving the application/domain contracts.
+CampusOps MCP Gateway is a fictional enterprise Model Context Protocol (MCP) platform. Phase 1 established the local secure MCP foundation, Phase 2 added an AWS serverless production foundation, and Phase 3A adds an authenticated AI workspace with governed MCP tool use.
 
 MCP is an open protocol that gives AI applications a standard way to discover and invoke tools, read contextual resources, and use reusable prompt templates. MCP does not replace application security: the model proposes a call, while this gateway validates and authorizes it.
 
@@ -17,12 +17,20 @@ AWS:   Cognito → API Gateway JWT authorizer → Lambda MCP adapter
                                                ↓ interfaces
                ┌───────────────────────────────┼──────────────────────────────┐
         InMemory policies            DynamoDB operations             DynamoDB audit
+
+Phase 3A: Browser → Next.js BFF session → Bedrock Converse → deterministic tool policy
+                   │                                           │
+                   └── Cognito PKCE              read: execute │ write: approve first
+                                                               ▼
+                                              authenticated MCP client → AWS path above
 ```
 
 The monorepo uses pnpm workspaces:
 
 - `apps/mcp-server`: HTTP/stdio entrypoints, MCP adapter, application services, repository interfaces/in-memory adapters, fictional data, and tests.
 - `apps/mcp-client`: v2 SDK client and end-to-end MCP contract tests.
+- `apps/workspace`: Next.js authenticated UI and server-side Cognito, session, chat, and approval routes.
+- `packages/ai`: Bedrock provider boundary, MCP-schema tool translation, deterministic read/write policy, orchestration, approval state, and safe diagnostics.
 - `packages/contracts`: shared Zod input schemas and domain contracts.
 - `packages/auth`: signed local JWT issuer/verifier, principals, and scope checks.
 - `packages/audit`: transport-independent audit event contract and in-memory sink.
@@ -95,6 +103,27 @@ Support-request and service repositories are durable DynamoDB adapters. Idempote
 
 Build the deterministic Lambda artifact with `pnpm build:lambda`; that command builds all workspace dependencies first and is safe from a clean checkout. Terraform is organized under `infrastructure/modules`, with an operator-owned bootstrap for S3 state and GitHub OIDC/deployment IAM plus a separate dev application state using native S3 lockfiles. The manual **Deploy dev** GitHub workflow runs through the protected `dev` environment and assumes the narrowly scoped AWS role—never permanent AWS access-key secrets. See [AWS architecture](docs/aws-architecture.md), [AWS security](docs/aws-security.md), and [deployment](docs/deployment.md).
 
+## Phase 3A AI workspace
+
+The model proposes actions. CampusOps authorizes and executes them. The browser signs in through the existing public Cognito client using Authorization Code + PKCE, but receives only opaque, HttpOnly workspace cookies. OAuth state, PKCE verifier, access token, conversation state, and approval proposals remain server-side and in memory. SameSite cookies plus a per-session CSRF token protect state-changing workspace routes; token expiry invalidates the session.
+
+The workspace server invokes Amazon Bedrock Converse through a provider boundary and exposes only MCP tools allowed by the token's mapped scopes. Tool definitions are translated from the existing Zod contracts. Read-only tools execute automatically through the authenticated MCP client. State-changing operations require explicit human approval in the workspace:
+
+| Policy                                  | Tools                                                                                   |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| Automatic after CampusOps authorization | `search_policies`, `get_service_status`, `list_support_requests`, `get_support_request` |
+| Explicit approval                       | `create_support_request`, `cancel_support_request`                                      |
+
+An approval is a random, expiring, single-use server record bound to the Cognito subject, workspace session, conversation, model tool-use ID, exact tool, and canonical argument fingerprint. The browser submits only the approval ID and decision; it cannot replace the stored operation. Approved execution still traverses API Gateway, Lambda, `CampusOpsService`, ownership checks, validation, idempotency, and audit. Prompt instructions shape model behavior but confer no authority.
+
+Run the workspace against the deployed dev identity and MCP environment with your short-lived AWS profile:
+
+```bash
+AWS_PROFILE=campusops-terraform AWS_REGION=us-west-2 pnpm dev:workspace
+```
+
+The helper reads Terraform outputs without hardcoding infrastructure identifiers and uses the configurable `BEDROCK_MODEL_ID` (default `amazon.nova-lite-v1:0`). Open `http://localhost:3000` and sign in. See [deployment](docs/deployment.md) for the complete flow and [architecture](docs/architecture.md) for trust boundaries.
+
 ## Validation and contract tests
 
 ```bash
@@ -114,14 +143,14 @@ Pull requests also run Terraform formatting, backend-free initialization, and va
 
 The server uses the official split MCP TypeScript SDK v2 packages. `createMcpHandler` serves the modern protocol and its stateless 2025-era compatibility path from one registration factory and endpoint. See [ADR 003](docs/adr/003-mcp-version-compatibility.md).
 
-## Future AWS architecture
+## Future evolution
 
-Phase 1 intentionally implements none of this. A future phase can place a hardened HTTP ingress and WAF in front of containerized gateway instances; use an external OIDC provider and short-lived tokens; move support and idempotency state to a transactional datastore; move policy documents to versioned object storage plus a search index; publish immutable audit events to a durable encrypted pipeline; manage secrets in a dedicated secret manager; and add centralized metrics, traces, alarms, and deployment controls. The existing transport, service, repository, verifier, and audit interfaces are seams for that evolution.
+Phase 3B can move fictional policy retrieval to a governed knowledge architecture using Bedrock/RAG and add durable, user-scoped conversation storage. AgentCore Gateway, OpenSearch, Knowledge Bases, guardrails, and a hosted workspace runtime are intentionally not part of Phase 3A.
 
 ## Security considerations
 
 Inputs are strict and bounded, scopes are least-privilege, side effects require explicit write permission, idempotency is user-scoped and payload-bound, ownership is enforced server-side with non-enumerating public errors, production JWT configuration fails closed, and audit payloads exclude sensitive content. MCP metadata is treated as untrusted presentation data rather than authority. See [the threat model](docs/threat-model.md) for attack-specific controls and residual risks.
 
-## Phase 2 limitations
+## Current limitations
 
-Lambda supports stateless MCP `POST /mcp`; authenticated `GET /mcp` returns 405 because SSE/server-initiated streams and sessionful MCP are not supported. Phase 2 does not contain Amazon Bedrock invocation, Bedrock Knowledge Bases, OpenSearch, RAG, AgentCore Gateway, or a frontend/chat application. Those remain Phase 3 work.
+Lambda supports stateless MCP `POST /mcp`; authenticated `GET /mcp` returns 405 because SSE/server-initiated streams and sessionful MCP are not supported. The Phase 3A workspace is a local reference BFF: sessions, conversations, and pending approvals are process-local and disappear on restart. Bedrock uses on-demand inference. Phase 3A does not contain Bedrock Knowledge Bases, OpenSearch, RAG, AgentCore Gateway, or durable conversation storage.

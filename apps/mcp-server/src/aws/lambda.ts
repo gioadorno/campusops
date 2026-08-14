@@ -12,6 +12,16 @@ import { createAwsDependencies } from './runtime.js';
 import type { AwsRuntimeConfig } from '@campusops/aws';
 import type { Dependencies } from '../application.js';
 
+const correlationId = (headers: Record<string, string | undefined>): string | undefined => {
+  const candidate = Object.entries(headers).find(
+    ([name]) => name.toLowerCase() === 'x-campusops-correlation-id'
+  )?.[1];
+  return candidate &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : undefined;
+};
+
 export const createLambdaHandler =
   (config: AwsRuntimeConfig, dependencies: Dependencies) =>
   async (
@@ -40,7 +50,9 @@ export const createLambdaHandler =
           ? { body: event.isBase64Encoded ? Buffer.from(event.body, 'base64') : event.body }
           : {})
       });
-      const mcp = createMcpHandler(() => createMcpServer(dependencies, principal));
+      const mcp = createMcpHandler(() =>
+        createMcpServer(dependencies, principal, correlationId(event.headers))
+      );
       const result = await mcp.fetch(request);
       const headers: Record<string, string> = {};
       result.headers.forEach((value, name) => (headers[name] = value));

@@ -1,13 +1,5 @@
 import { AuthenticationError, type Principal } from '@campusops/auth';
-import type { Scope } from '@campusops/contracts';
-
-export const cognitoScopeMap: Readonly<Record<string, Scope>> = {
-  'campusops/policies.read': 'policies:read',
-  'campusops/services.read': 'services:read',
-  'campusops/requests.read': 'requests:read',
-  'campusops/requests.write': 'requests:write',
-  'campusops/admin.audit': 'admin:audit'
-};
+import { mapCognitoScopes } from '@campusops/aws';
 
 export interface ApiGatewayClaims {
   sub?: unknown;
@@ -24,14 +16,6 @@ export function principalFromApiGatewayClaims(
   if (claims.scope !== undefined && typeof claims.scope !== 'string') {
     throw new AuthenticationError('Authenticated request contains malformed scopes');
   }
-  const external =
-    typeof claims.scope === 'string' ? claims.scope.split(/\s+/).filter(Boolean) : [];
-  const scopes = [
-    ...new Set(
-      external
-        .map((scope) => cognitoScopeMap[scope])
-        .filter((scope): scope is Scope => scope !== undefined)
-    )
-  ];
+  const scopes = mapCognitoScopes(typeof claims.scope === 'string' ? claims.scope : '');
   return { userId: claims.sub, sessionId: requestId, scopes };
 }

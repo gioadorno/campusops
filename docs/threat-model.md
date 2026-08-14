@@ -42,3 +42,21 @@ Schema limits constrain individual payloads, but Phase 1 has no HTTP rate limite
 | Replay/concurrent idempotency     | Canonical SHA-256 payload binding, transactional conditional creation, consistent winner re-read, and TTL cleanup.                                                                                  |
 
 Authentication, application authorization, record ownership, runtime IAM permissions, and deployment permissions are independent boundaries; success at one never implies success at another.
+
+## Phase 3A AI workspace threats
+
+| Threat                                       | Mitigation                                                                                                                                                                                                   |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Prompt injection or model self-authorization | Only compile-time tool names are accepted; Zod validates proposals; deterministic code classifies writes; prompt text and model claims cannot approve anything.                                              |
+| Unauthorized or unknown model tool           | Bedrock receives only scope-eligible definitions; the orchestrator independently rejects unknown, malformed, or ineligible proposals; CampusOps performs final scope and ownership checks.                   |
+| Mixed or parallel model tool batch           | Parallel execution is permitted only when every proposal is validated, scope-eligible, and read-only; any write, unknown, malformed, or ineligible member blocks the entire batch.                           |
+| Write without human approval                 | `create_support_request` and `cancel_support_request` stop at a pending approval. Only the server's approval transition can release the stored proposal to MCP.                                              |
+| Approval replay or substitution              | Random approval IDs expire, are single-use, and bind user, session, conversation, tool-use ID, exact tool, and canonical argument fingerprint. Browser approval input cannot replace arguments.              |
+| Cross-user access                            | Cognito `sub` owns the workspace session; tokens stay server-side; MCP derives the same subject from API Gateway claims and rechecks support-request ownership.                                              |
+| OAuth callback or CSRF attack                | Authorization Code + S256 PKCE, random one-time state, opaque HttpOnly SameSite cookies, exact callback URL, and a per-session CSRF token on workspace mutations.                                            |
+| Expired or invalid tokens                    | Both Cognito JWTs are signature/issuer/type/client/subject checked; the workspace session expires no later than the access token; API Gateway independently validates the MCP access token.                  |
+| Token or error disclosure                    | No token persistence in browser storage, URLs are cleared after callback, framework request logging is disabled, diagnostics use allow-listed error classes and metadata only, and UI errors are normalized. |
+| Sensitive prompt/activity logging            | Structured events contain correlation ID, operation, tool name, result, and latency—not tokens, tool inputs/results, support descriptions, credentials, or hidden model reasoning.                           |
+| Bedrock or AWS error leakage                 | Provider failures are reduced to allow-listed error types for diagnostics and a bounded public workspace error. Raw AWS errors and stack traces never reach React.                                           |
+
+The system prompt instructs the model to use retrieved facts and wait for successful results, but it is defense in depth only. The model proposes actions. CampusOps authorizes and executes them. State-changing operations require explicit human approval in the workspace.
