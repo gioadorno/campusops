@@ -117,7 +117,7 @@ resource "aws_iam_role_policy" "github_deploy" {
       {
         Sid      = "ManageCampusOpsLambda"
         Effect   = "Allow"
-        Action   = ["lambda:CreateFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:GetFunctionConcurrency", "lambda:GetFunctionCodeSigningConfig", "lambda:GetPolicy", "lambda:DeleteFunction", "lambda:AddPermission", "lambda:RemovePermission", "lambda:TagResource", "lambda:UntagResource", "lambda:ListTags"]
+        Action   = ["lambda:CreateFunction", "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:GetFunctionConcurrency", "lambda:GetFunctionCodeSigningConfig", "lambda:GetPolicy", "lambda:DeleteFunction", "lambda:AddPermission", "lambda:RemovePermission", "lambda:TagResource", "lambda:UntagResource", "lambda:ListTags", "lambda:ListVersionsByFunction"]
         Resource = ["arn:aws:lambda:${var.aws_region}:${local.account_id}:function:${local.application_name}*"]
       },
       {
@@ -129,7 +129,7 @@ resource "aws_iam_role_policy" "github_deploy" {
       {
         Sid    = "ManageCampusOpsApiGateway"
         Effect = "Allow"
-        Action = ["apigateway:GET", "apigateway:POST", "apigateway:PATCH", "apigateway:DELETE"]
+        Action = ["apigateway:GET", "apigateway:POST", "apigateway:PATCH", "apigateway:DELETE", "apigateway:PUT"]
         Resource = [
           "arn:aws:apigateway:${var.aws_region}::/apis*",
           "arn:aws:apigateway:${var.aws_region}::/tags/*"
