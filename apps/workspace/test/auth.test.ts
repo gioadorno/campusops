@@ -2,8 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { authorizeWorkspaceRequest } from '../src/server/request-auth.js';
 import { InMemoryWorkspaceAuthStore, WorkspaceAuthenticationError } from '../src/server/session.js';
 import { loadWorkspaceConfig } from '../src/server/config.js';
+import { validateCognitoClaims } from '../src/server/cognito.js';
 
 describe('workspace Cognito session boundary', () => {
+  it('rejects an ID token payload with the wrong token_use', () => {
+    const access = {
+      sub: 'user-alex',
+      client_id: 'workspace-client',
+      token_use: 'access',
+      scope: 'campusops/services.read',
+      exp: 2_000
+    };
+    expect(() =>
+      validateCognitoClaims(
+        access,
+        { sub: 'user-alex', token_use: 'access', email: 'alex@example.test' },
+        'workspace-client'
+      )
+    ).toThrow();
+    expect(
+      validateCognitoClaims(
+        access,
+        { sub: 'user-alex', token_use: 'id', email: 'alex@example.test' },
+        'workspace-client'
+      ).identity.token_use
+    ).toBe('id');
+  });
+
   it('enforces one-time OAuth state matching', () => {
     const store = new InMemoryWorkspaceAuthStore();
     const login = store.beginLogin();

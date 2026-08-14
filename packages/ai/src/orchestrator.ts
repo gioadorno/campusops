@@ -117,13 +117,14 @@ export class CampusOpsOrchestrator {
 
   async approve(context: UserContext, approvalId: string): Promise<TurnResult> {
     const correlationId = randomUUID();
-    const approval = this.approvals.claim(approvalId, context.userId, context.sessionId);
+    const pending = this.approvals.validatePending(approvalId, context.userId, context.sessionId);
     const conversation = this.conversations.get(
-      approval.conversationId,
+      pending.conversationId,
       context.userId,
       context.sessionId
     );
-    if (conversation.pendingApprovalId !== approval.id) throw new ApprovalError();
+    if (conversation.pendingApprovalId !== pending.id) throw new ApprovalError();
+    const approval = this.approvals.claim(approvalId, context.userId, context.sessionId);
     const activities = [activity('approval_accepted', 'Human approval accepted', 'success')];
     this.diagnostics.write({
       correlationId,
@@ -172,13 +173,14 @@ export class CampusOpsOrchestrator {
 
   reject(context: UserContext, approvalId: string): Promise<TurnResult> {
     const correlationId = randomUUID();
-    const approval = this.approvals.reject(approvalId, context.userId, context.sessionId);
+    const pending = this.approvals.validatePending(approvalId, context.userId, context.sessionId);
     const conversation = this.conversations.get(
-      approval.conversationId,
+      pending.conversationId,
       context.userId,
       context.sessionId
     );
-    if (conversation.pendingApprovalId !== approval.id) throw new ApprovalError();
+    if (conversation.pendingApprovalId !== pending.id) throw new ApprovalError();
+    const approval = this.approvals.reject(approvalId, context.userId, context.sessionId);
     delete conversation.pendingApprovalId;
     conversation.messages.push(
       toolResult(
